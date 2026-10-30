@@ -1,0 +1,26 @@
+services:
+  mqtt:
+    image: eclipse-mosquitto:2
+    ports:
+      - "127.0.0.1:1883:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
+  # Емульоване апаратне коло (Uno у simavr + 3 x SCD40 + TCA9548A + ESP8266).
+  # Запуск лише на вимогу: docker compose --profile hw up -d
+  hw:
+    profiles: ["hw"]
+    build: ./hw
+    image: co2vent-hw:1
+    depends_on: [mqtt]
+    volumes:
+      - .:/app
+    environment:
+      PYTHONPATH: /app
+      PZIR_BROKER_HOST: mqtt
+      PZIR_TIME_SCALE: ${PZIR_TIME_SCALE:-1}
+      HW_SCENARIO: ${HW_SCENARIO:-scenarios/class_day.csv}
+      HW_CRC_FAULTS: ${HW_CRC_FAULTS:-}
+      HW_WIFI_DROP: ${HW_WIFI_DROP:-}
+      HW_LOG_DIR: ${HW_LOG_DIR:-}
+    command: ["hw/run.sh"]

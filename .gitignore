@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.env
+# робочі БД запуску поза logs/
+/co2vent.db*
+/agent-state.db*
+*.db-shm
+*.db-wal
+# артефакти збирання (відтворюються в контейнері hw)
+hw/build/
+hw/sim/uno_sim
+logs/try-*

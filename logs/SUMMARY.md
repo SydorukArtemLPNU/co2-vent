@@ -1,0 +1,24 @@
+# Зведення прогонів
+
+Затримки, мс: медіана / p95 / максимум. Утримання — у сценарних секундах.
+
+| Прогін | ×k | Подій у БД | Телеметрія, мс | Команда → ACK, мс | Команди за статусом | Відхилено | Утримання до ventilation_on, с |
+|---|---|---|---|---|---|---|---|
+| `run-20261030T152507Z-x10` | 10 | 323 | 2.0 / 5.0 / 41.0 (n=323) | 2.0 / 4.0 / 4.0 (n=3) | applied 3 | device_id mismatch with topic 1, duplicate event_id 1, stale event 1, unknown unit 1, value is not a number 1, value out of range 1 | 180.0 |
+| `run-20261030T152629Z-x10-noagent` | 10 | 60 | 2.0 / 40.0 / 43.0 (n=60) | — | expired 7 | — | — |
+| `run-20261030T152701Z-x10-brokerrestart` | 10 | 323 | 2.0 / 4.0 / 706.0 (n=323) | 3.0 / 3.0 / 3.0 (n=3) | applied 3 | ack: unknown command_id 7, device_id mismatch with topic 1, duplicate event_id 1, stale event 1, unknown unit 1, value is not a number 1, value out of range 1 | 180.0 |
+| `run-20261030T155256Z-x10-hw` | 10 | 320 | 5.0 / 7.0 / 12.0 (n=320) | 16.0 / 63.0 / 63.0 (n=3) | applied 3 | — | 183.9 |
+| `run-20261030T155552Z-x10-hw-unoreset-wifidrop-crc` | 10 | 296 | 6.0 / 1477.0 / 2864.0 (n=296) | 51.0 / 60.0 / 60.0 (n=3) | applied 3 | — | 180.9 |
+| `run-20261030T161007Z-x1` | 1 | 323 | 3.0 / 6.0 / 18.0 (n=323) | 4.0 / 5.0 / 5.0 (n=3) | applied 3 | device_id mismatch with topic 1, duplicate event_id 1, stale event 1, unknown unit 1, value is not a number 1, value out of range 1 | 180.1 |
+| `run-20261030T161936Z-x1-hw` | 1 | 326 | 4.0 / 12.0 / 42.0 (n=326) | 91.5 / 104.0 / 104.0 (n=2) | applied 2 | — | 180.0 |
+
+## Критерій К1: утримання 180 с
+
+Очікувано: 180 с ≤ утримання < 185 с (рішення на першій події після 180 с; період давачів 5 с).
+
+- ✅ `run-20261030T152507Z-x10`: 180.00 с
+- ✅ `run-20261030T152701Z-x10-brokerrestart`: 180.00 с
+- ✅ `run-20261030T155256Z-x10-hw`: 183.92 с
+- ✅ `run-20261030T155552Z-x10-hw-unoreset-wifidrop-crc`: 180.92 с
+- ✅ `run-20261030T161007Z-x1`: 180.10 с
+- ✅ `run-20261030T161936Z-x1-hw`: 180.01 с

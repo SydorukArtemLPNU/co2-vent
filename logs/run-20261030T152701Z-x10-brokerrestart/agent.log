@@ -1,0 +1,12 @@
+2026-10-30 17:27:01,593 INFO agent MQTT connected rc=Success ventilation=off
+2026-10-30 17:27:01,593 INFO agent COMMAND rejected command_id=cmd-d5e3fdcdfdd2 action=ventilation_off -> ventilation=off
+2026-10-30 17:27:01,594 INFO agent COMMAND rejected command_id=cmd-5d284a191a97 action=ventilation_off -> ventilation=off
+2026-10-30 17:27:01,594 INFO agent COMMAND rejected command_id=cmd-0b5e38488c73 action=ventilation_off -> ventilation=off
+2026-10-30 17:27:01,594 INFO agent COMMAND rejected command_id=cmd-44d1102cccc4 action=ventilation_off -> ventilation=off
+2026-10-30 17:27:01,595 INFO agent COMMAND rejected command_id=cmd-90cde8c6f0ba action=ventilation_off -> ventilation=off
+2026-10-30 17:27:01,595 INFO agent COMMAND rejected command_id=cmd-f4e0d5003672 action=ventilation_off -> ventilation=off
+2026-10-30 17:27:01,595 INFO agent COMMAND rejected command_id=cmd-5832aa5dea4c action=ventilation_off -> ventilation=off
+2026-10-30 17:27:03,095 INFO agent COMMAND applied command_id=cmd-a3bc453d0307 action=ventilation_off -> ventilation=off
+2026-10-30 17:27:24,298 INFO agent MQTT connected rc=Success ventilation=off
+2026-10-30 17:27:38,108 INFO agent COMMAND applied command_id=cmd-4dae99a4adb5 action=ventilation_on -> ventilation=on
+2026-10-30 17:27:51,121 INFO agent COMMAND applied command_id=cmd-6569baad7b05 action=ventilation_off -> ventilation=off

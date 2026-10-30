@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Вентиляція класу</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --ink:#1d2330; --muted:#6b7280; --line:#e3e6eb;
+          --on:#0f8a4b; --off:#4b5563; --warn:#b45309; --bad:#b91c1c; --s1:#2563eb; --s2:#9333ea; --s3:#0d9488; --med:#111827; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background:var(--bg); color:var(--ink); }
+  header { padding:14px 20px; background:var(--card); border-bottom:1px solid var(--line); display:flex; gap:16px; align-items:baseline; flex-wrap:wrap; }
+  header h1 { font-size:18px; margin:0; }
+  header .meta { color:var(--muted); }
+  main { padding:16px 20px; display:grid; gap:14px; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px 14px; }
+  .wide { grid-column:1 / -1; }
+  .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+  .big { font-size:34px; font-weight:650; font-variant-numeric:tabular-nums; }
+  .badge { display:inline-block; padding:3px 10px; border-radius:999px; color:#fff; font-weight:600; }
+  .on { background:var(--on); } .off { background:var(--off); } .pending { background:var(--warn); } .unknown { background:var(--bad); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:4px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+  td.num { font-variant-numeric:tabular-nums; }
+  .muted { color:var(--muted); } .stale { color:var(--bad); }
+  svg { width:100%; height:260px; display:block; }
+  .legend span { margin-right:12px; } .legend i { display:inline-block; width:10px; height:3px; margin-right:4px; vertical-align:middle; }
+  .scroll { overflow-x:auto; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Вентиляція класу · CO₂</h1>
+  <span class="meta" id="meta">завантаження…</span>
+</header>
+<main>
+  <section class="card">
+    <div class="label">Медіана 3 × SCD40</div>
+    <div class="big" id="median">—</div>
+    <div class="muted" id="medianAt"></div>
+  </section>
+  <section class="card">
+    <div class="label">Вентиляція (за ACK)</div>
+    <div style="margin:8px 0"><span class="badge unknown" id="vent">—</span></div>
+    <div class="muted" id="ventNote"></div>
+  </section>
+  <section class="card">
+    <div class="label">Правило</div>
+    <div id="rule">—</div>
+    <div class="muted" id="ruleNote"></div>
+  </section>
+  <section class="card">
+    <div class="label">Давачі</div>
+    <table id="sensors"></table>
+  </section>
+  <section class="card wide">
+    <div class="label">Історія CO₂, ppm <span class="legend" id="legend"></span></div>
+    <svg id="chart" role="img" aria-label="Графік CO2"></svg>
+  </section>
+  <section class="card wide scroll">
+    <div class="label">Команди</div>
+    <table id="commands"></table>
+  </section>
+  <section class="card wide scroll">
+    <div class="label">Відхилені повідомлення</div>
+    <table id="rejected"></table>
+  </section>
+</main>
+<script>
+const DEVICE = new URLSearchParams(location.search).get("device") || "class-20";
+const COLORS = {"scd40-1": "var(--s1)", "scd40-2": "var(--s2)", "scd40-3": "var(--s3)", median: "var(--med)"};
+const VIEW = {on: "увімкнено", off: "вимкнено", pending: "очікує ACK", unknown: "невідомо"};
+const esc = s => String(s ?? "—").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const time = s => s ? new Date(s).toLocaleTimeString("uk-UA", {hour12:false}) + "." + String(new Date(s).getMilliseconds()).padStart(3,"0") : "—";
+
+async function get(path) {
+  const r = await fetch(path, {cache: "no-store"});
+  if (!r.ok) throw new Error(path + " → " + r.status);
+  return r.json();
+}
+
+function renderState(s) {
+  document.getElementById("meta").textContent =
+    `${s.device_id} · джерело: ${Object.values(s.sensors).find(x => x)?.source ?? "—"} · масштаб часу ×${s.time_scale} · оновлено ${time(s.now)}`;
+  const med = document.getElementById("median");
+  med.textContent = s.co2_median == null ? "—" : `${Math.round(s.co2_median)} ppm`;
+  med.className = "big" + (s.data_stale ? " stale" : "");
+  document.getElementById("medianAt").textContent =
+    (s.data_stale ? "ДАНІ ЗАСТАРІЛІ · " : "") + "observed_at " + time(s.median_at);
+  const v = document.getElementById("vent");
+  v.textContent = VIEW[s.ventilation] || s.ventilation;
+  v.className = "badge " + s.ventilation;
+  const c = s.last_command;
+  const a = s.actuator;
+  document.getElementById("ventNote").textContent = (c
+    ? `остання команда ${c.command_id}: ${c.action} → ${c.status}` + (c.reason ? ` (${c.reason})` : "")
+    : "команд ще не було") + (a ? ` · підтверджено: ${a.command_id} о ${time(a.confirmed_at)}` : "");
+  const r = s.rule, t = s.thresholds;
+  document.getElementById("rule").textContent = r ? `бажаний стан: ${r.desired === "on" ? "вентиляція" : "без вентиляції"}` : "—";
+  document.getElementById("ruleNote").textContent = r && r.high_since
+    ? `> ${t.high_ppm} ppm уже ${r.hold_elapsed_s.toFixed(1)} с із ${t.hold_s} с`
+    : `увімк.: > ${t.high_ppm} ppm ${t.hold_s} с · вимк.: < ${t.low_ppm} ppm`;
+  document.getElementById("sensors").innerHTML = "<tr><th>давач</th><th>ppm</th><th>вік, с</th></tr>" +
+    Object.entries(s.sensors).map(([id, x]) => x
+      ? `<tr><td><i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${COLORS[id]}"></i> ${id}</td>
+           <td class="num">${x.value.toFixed(1)}</td><td class="num ${x.fresh ? "" : "stale"}">${x.age_s}</td></tr>`
+      : `<tr><td>${id}</td><td colspan="2" class="muted">немає даних</td></tr>`).join("");
+}
+
+function renderChart(events, t) {
+  const svg = document.getElementById("chart");
+  const W = svg.clientWidth || 800, H = 260, L = 46, R = 10, T = 10, B = 24;
+  if (!events.length) { svg.innerHTML = ""; return; }
+  const xs = events.map(e => Date.parse(e.observed_at));
+  const x0 = Math.min(...xs), x1 = Math.max(...xs) || x0 + 1;
+  const vals = events.map(e => e.value).concat([t.high_ppm, t.low_ppm]);
+  const y0 = Math.min(...vals) - 50, y1 = Math.min(Math.max(...vals) + 50, 3000);
+  const X = v => L + (W - L - R) * (v - x0) / Math.max(x1 - x0, 1);
+  const Y = v => T + (H - T - B) * (1 - (Math.min(v, y1) - y0) / (y1 - y0));
+  const line = (pts, color, w, dash = "") => pts.length ? `<polyline fill="none" stroke="${color}" stroke-width="${w}" ${dash}
+      points="${pts.map(p => X(p[0]).toFixed(1) + "," + Y(p[1]).toFixed(1)).join(" ")}"/>` : "";
+  let out = "";
+  for (const [v, label] of [[t.high_ppm, "1000"], [t.low_ppm, "800"]]) {
+    out += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="#d1d5db" stroke-dasharray="4 4"/>
+            <text x="${L - 6}" y="${Y(v) + 4}" font-size="11" text-anchor="end" fill="#6b7280">${label}</text>`;
+  }
+  for (const id of ["scd40-1", "scd40-2", "scd40-3"]) {
+    out += line(events.filter(e => e.sensor_id === id).map(e => [Date.parse(e.observed_at), e.value]), COLORS[id], 1.2);
+  }
+  out += line(events.filter(e => e.co2_median != null).map(e => [Date.parse(e.observed_at), e.co2_median]), COLORS.median, 2.4);
+  out += `<text x="${L}" y="${H - 6}" font-size="11" fill="#6b7280">${time(new Date(x0).toISOString())}</text>
+          <text x="${W - R}" y="${H - 6}" font-size="11" text-anchor="end" fill="#6b7280">${time(new Date(x1).toISOString())}</text>`;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = out;
+  document.getElementById("legend").innerHTML = Object.entries(COLORS)
+    .map(([k, c]) => `<span><i style="background:${c}"></i>${k === "median" ? "медіана" : k}</span>`).join("");
+}
+
+function renderCommands(rows) {
+  document.getElementById("commands").innerHTML =
+    "<tr><th>command_id</th><th>action</th><th>status</th><th>issued_at</th><th>expires_at</th><th>ack_at</th><th>trigger event_id</th><th>примітка</th></tr>" +
+    rows.map(c => `<tr><td>${esc(c.command_id)}</td><td>${esc(c.action)}</td><td><b>${esc(c.status)}</b></td>
+      <td>${time(c.issued_at)}</td><td>${time(c.expires_at)}</td><td>${time(c.ack_at)}</td>
+      <td class="muted">${esc(c.trigger_event_id)}</td><td>${esc(c.reason)}</td></tr>`).join("");
+}
+
+function renderRejected(rows) {
+  document.getElementById("rejected").innerHTML =
+    "<tr><th>received_at</th><th>причина</th><th>event_id</th><th>topic</th></tr>" +
+    rows.map(r => `<tr><td>${time(r.received_at)}</td><td><b>${esc(r.reason)}</b></td>
+      <td class="muted">${esc(r.event_id)}</td><td class="muted">${esc(r.topic)}</td></tr>`).join("");
+}
+
+async function tick() {
+  try {
+    const base = `/api/devices/${encodeURIComponent(DEVICE)}`;
+    const [state, events, commands, rejected] = await Promise.all([
+      get(base + "/state"), get(base + "/events?limit=300"), get(base + "/commands?limit=10"), get("/api/rejected?limit=10")]);
+    renderState(state); renderChart(events, state.thresholds); renderCommands(commands); renderRejected(rejected);
+  } catch (err) {
+    document.getElementById("meta").textContent = "немає даних: " + err.message;
+  }
+}
+tick();
+setInterval(tick, 1000);
+</script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+Loaded 6638 .text at address 0x0
+Loaded 54 .data
+uart_pty_init bridge on port *** /dev/pts/0 ***
+uart_pty_connect: /tmp/simavr-uart0 now points to /dev/pts/0
+note: export SIMAVR_UART_XTERM=1 and install picocom to get a terminal
+SIM start mcu=atmega328p f=16000000 speed=10.00 i2c=127.0.0.1:7700
+PIN relay_D7=0 t_us=223
+PIN led_D13=0 t_us=226
+SIM t=60s real=6.0s ratio=10.00
+SIM t=120s real=12.0s ratio=10.00
+SIM t=180s real=18.0s ratio=10.00
+SIM t=240s real=24.0s ratio=10.00
+SIM t=300s real=30.0s ratio=10.00
+SIM t=360s real=36.0s ratio=10.00
+PIN relay_D7=1 t_us=367237816
+PIN led_D13=1 t_us=367237820
+SIM reset t_us=403832347
+PIN relay_D7=0 t_us=403832570
+PIN led_D13=0 t_us=403832573
+PIN relay_D7=1 t_us=405869821
+PIN led_D13=1 t_us=405869825
+SIM t=420s real=42.0s ratio=10.00
+SIM t=480s real=48.0s ratio=10.00
+PIN relay_D7=0 t_us=491113100
+PIN led_D13=0 t_us=491113103
+SIM t=540s real=54.0s ratio=10.00

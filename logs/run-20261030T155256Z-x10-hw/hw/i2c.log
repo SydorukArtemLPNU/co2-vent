@@ -1,0 +1,2 @@
+2026-10-30 15:52:59,630 INFO i2c I2C bus models on 127.0.0.1:7700 (TCA9548A 0x70, 3 x SCD40 0x62)
+2026-10-30 15:53:00,101 INFO i2c uno_sim connected from ('127.0.0.1', 45802), scenario=scenarios/class_day.csv faults=-

@@ -1,0 +1,3 @@
+2026-10-30 15:55:57,318 INFO i2c I2C bus models on 127.0.0.1:7700 (TCA9548A 0x70, 3 x SCD40 0x62)
+2026-10-30 15:55:57,664 INFO i2c uno_sim connected from ('127.0.0.1', 35958), scenario=scenarios/class_day.csv faults={'scd40-2': {20}}
+2026-10-30 15:56:07,820 INFO i2c FAULT scd40-2 crc corrupted on tick 20

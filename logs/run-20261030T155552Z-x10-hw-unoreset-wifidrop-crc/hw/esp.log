@@ -1,0 +1,45 @@
+2026-10-30 15:55:57,674 INFO esp ESP8266 model: buffer=512 queue=16 dedup=16 port=/tmp/simavr-uart0
+2026-10-30 15:55:57,761 INFO esp UNO sensor init I,0,9A3F07B23B01
+2026-10-30 15:55:57,829 INFO esp UNO sensor init I,1,9A3F07B23C14
+2026-10-30 15:55:57,893 INFO esp UNO sensor init I,2,9A3F07B23D27
+2026-10-30 15:55:57,893 WARNING esp UNO boot B,uno_node,3 - relay is off after reset
+2026-10-30 15:55:57,893 INFO esp WIFI connected
+2026-10-30 15:55:57,902 INFO esp MQTT up, flushed 0 queued messages
+2026-10-30 15:55:58,000 INFO esp NTP synced
+2026-10-30 15:56:07,839 WARNING esp UNO sensor error E,1,crc
+2026-10-30 15:56:12,688 WARNING esp WIFI lost (emulated) stats={'published_state': 1, 'published_telemetry': 86, 'sensor_error': 1}
+2026-10-30 15:56:12,691 WARNING esp MQTT down rc=Normal disconnection
+2026-10-30 15:56:15,339 WARNING esp QUEUE full (16) - oldest message dropped
+2026-10-30 15:56:15,340 WARNING esp QUEUE full (16) - oldest message dropped
+2026-10-30 15:56:15,740 WARNING esp QUEUE full (16) - oldest message dropped
+2026-10-30 15:56:15,844 WARNING esp QUEUE full (16) - oldest message dropped
+2026-10-30 15:56:15,844 WARNING esp QUEUE full (16) - oldest message dropped
+2026-10-30 15:56:16,244 WARNING esp QUEUE full (16) - oldest message dropped
+2026-10-30 15:56:16,329 WARNING esp QUEUE full (16) - oldest message dropped
+2026-10-30 15:56:16,330 WARNING esp QUEUE full (16) - oldest message dropped
+2026-10-30 15:56:16,730 WARNING esp QUEUE full (16) - oldest message dropped
+2026-10-30 15:56:16,835 WARNING esp QUEUE full (16) - oldest message dropped
+2026-10-30 15:56:16,836 WARNING esp QUEUE full (16) - oldest message dropped
+2026-10-30 15:56:17,237 WARNING esp QUEUE full (16) - oldest message dropped
+2026-10-30 15:56:17,342 WARNING esp QUEUE full (16) - oldest message dropped
+2026-10-30 15:56:17,343 WARNING esp QUEUE full (16) - oldest message dropped
+2026-10-30 15:56:17,742 WARNING esp QUEUE full (16) - oldest message dropped
+2026-10-30 15:56:17,827 WARNING esp QUEUE full (16) - oldest message dropped
+2026-10-30 15:56:17,849 WARNING esp QUEUE full (16) - oldest message dropped
+2026-10-30 15:56:18,229 WARNING esp QUEUE full (16) - oldest message dropped
+2026-10-30 15:56:18,334 WARNING esp QUEUE full (16) - oldest message dropped
+2026-10-30 15:56:18,334 WARNING esp QUEUE full (16) - oldest message dropped
+2026-10-30 15:56:18,692 INFO esp WIFI restored
+2026-10-30 15:56:18,705 INFO esp MQTT up, flushed 16 queued messages
+2026-10-30 15:56:20,340 WARNING esp UNO sensor error E,2,nack
+2026-10-30 15:56:21,437 INFO esp UNO sensor init I,2,fail
+2026-10-30 15:56:22,535 INFO esp UNO sensor init I,2,fail
+2026-10-30 15:56:23,632 INFO esp UNO sensor init I,2,fail
+2026-10-30 15:56:24,820 INFO esp UNO sensor init I,2,9A3F07B23D27
+2026-10-30 15:56:34,382 INFO esp COMMAND ventilation_on -> UART C,cmd-7c226d4ddd0c,1
+2026-10-30 15:56:38,137 INFO esp UNO sensor init I,0,9A3F07B23B01
+2026-10-30 15:56:38,200 INFO esp UNO sensor init I,1,9A3F07B23C14
+2026-10-30 15:56:38,264 INFO esp UNO sensor init I,2,9A3F07B23D27
+2026-10-30 15:56:38,264 WARNING esp UNO boot B,uno_node,3 - relay is off after reset
+2026-10-30 15:56:38,266 INFO esp COMMAND ventilation_on -> UART C,cmd-16bce9ee7936,1
+2026-10-30 15:56:46,770 INFO esp COMMAND ventilation_off -> UART C,cmd-2216b6c4f1e6,0

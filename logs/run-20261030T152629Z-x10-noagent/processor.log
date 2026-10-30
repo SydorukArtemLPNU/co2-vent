@@ -1,0 +1,77 @@
+2026-10-30 17:26:29,797 INFO processor RECOVER state desired=off high_since=None last_at=None
+2026-10-30 17:26:29,797 INFO processor time_scale=10.0 hold=18.0s ttl=1.0s db=logs/run-20261030T152629Z-x10-noagent/co2vent.db
+2026-10-30 17:26:29,804 INFO processor MQTT connected rc=Success
+2026-10-30 17:26:31,304 INFO processor EVENT event_id=d44b2abc-3e7b-41ef-941d-77587d909a83 sensor=scd40-1 value=660.1 median=None desired=off high_since=-
+2026-10-30 17:26:31,305 INFO processor COMMAND sent command_id=cmd-d5e3fdcdfdd2 action=ventilation_off expires_at=2026-10-30T15:26:32.304Z
+2026-10-30 17:26:31,350 INFO processor EVENT event_id=3b0877c3-d925-4f72-8d97-5c0cc8e41f99 sensor=scd40-2 value=658.2 median=659.1500000000001 desired=off high_since=-
+2026-10-30 17:26:31,350 INFO processor EVENT event_id=27ede85c-663d-492c-8eb0-30ce5f24d689 sensor=scd40-3 value=641.8 median=658.2 desired=off high_since=-
+2026-10-30 17:26:31,806 INFO processor EVENT event_id=cd666f87-65a1-4e2d-96a9-3a88b153a302 sensor=scd40-1 value=655.5 median=655.5 desired=off high_since=-
+2026-10-30 17:26:31,812 INFO processor EVENT event_id=fa0e7e78-eb4e-4869-bb59-6b2ea7418a68 sensor=scd40-2 value=687.0 median=655.5 desired=off high_since=-
+2026-10-30 17:26:31,824 INFO processor EVENT event_id=1f7d33a0-357c-4b40-8198-096650312325 sensor=scd40-3 value=674.1 median=674.1 desired=off high_since=-
+2026-10-30 17:26:32,307 INFO processor EVENT event_id=8ec6aed7-17b4-4d18-9bab-c2f598057740 sensor=scd40-1 value=708.9 median=687.0 desired=off high_since=-
+2026-10-30 17:26:32,312 INFO processor EVENT event_id=b57d3440-b238-4ee9-975d-98b7a950785e sensor=scd40-2 value=701.3 median=701.3 desired=off high_since=-
+2026-10-30 17:26:32,314 WARNING processor TIMEOUT command_id=cmd-d5e3fdcdfdd2 action=ventilation_off -> expired, ventilation unknown
+2026-10-30 17:26:32,322 INFO processor EVENT event_id=62aed934-b35f-4499-8e77-31dbcfc84097 sensor=scd40-3 value=681.1 median=701.3 desired=off high_since=-
+2026-10-30 17:26:32,323 INFO processor COMMAND sent command_id=cmd-5d284a191a97 action=ventilation_off expires_at=2026-10-30T15:26:33.322Z
+2026-10-30 17:26:32,808 INFO processor EVENT event_id=d733e3bf-f1a5-4157-b5f7-3b24a4bee100 sensor=scd40-1 value=716.0 median=701.3 desired=off high_since=-
+2026-10-30 17:26:32,814 INFO processor EVENT event_id=575a2b0c-cf11-45e5-a743-7c3ecc3ca03d sensor=scd40-2 value=711.5 median=711.5 desired=off high_since=-
+2026-10-30 17:26:32,824 INFO processor EVENT event_id=3b6b7b5a-9a32-4d50-90f5-d4438d841457 sensor=scd40-3 value=721.7 median=716.0 desired=off high_since=-
+2026-10-30 17:26:33,307 INFO processor EVENT event_id=c48c5de0-57bf-4301-985c-a5e5204a31da sensor=scd40-1 value=746.5 median=721.7 desired=off high_since=-
+2026-10-30 17:26:33,312 INFO processor EVENT event_id=cb84a6ae-bdc6-4995-b109-a6f4ec8d006d sensor=scd40-2 value=760.1 median=746.5 desired=off high_since=-
+2026-10-30 17:26:33,322 INFO processor EVENT event_id=bf0a7574-91f0-46e0-85e9-06fbf4844f38 sensor=scd40-3 value=739.2 median=746.5 desired=off high_since=-
+2026-10-30 17:26:33,806 INFO processor EVENT event_id=19ad27d6-11de-4872-8cff-705f87dc598b sensor=scd40-1 value=760.9 median=760.1 desired=off high_since=-
+2026-10-30 17:26:33,812 INFO processor EVENT event_id=aaa3c019-cb85-49e2-b345-5a58b6eefb62 sensor=scd40-2 value=780.4 median=760.9 desired=off high_since=-
+2026-10-30 17:26:33,824 INFO processor EVENT event_id=e3d94e4f-dfd0-4c07-a517-cfa5064053c5 sensor=scd40-3 value=760.4 median=760.9 desired=off high_since=-
+2026-10-30 17:26:33,825 WARNING processor TIMEOUT command_id=cmd-5d284a191a97 action=ventilation_off -> expired, ventilation unknown
+2026-10-30 17:26:34,309 INFO processor EVENT event_id=0bfe256e-a1c9-4e12-925a-810e9e0fe36e sensor=scd40-1 value=792.4 median=780.4 desired=off high_since=-
+2026-10-30 17:26:34,310 INFO processor COMMAND sent command_id=cmd-0b5e38488c73 action=ventilation_off expires_at=2026-10-30T15:26:35.309Z
+2026-10-30 17:26:34,354 INFO processor EVENT event_id=7ba780e9-e81b-4ea4-853d-5fccb8d38984 sensor=scd40-2 value=797.4 median=792.4 desired=off high_since=-
+2026-10-30 17:26:34,355 INFO processor EVENT event_id=4bce64b3-d55a-4deb-903f-8eccea381a3c sensor=scd40-3 value=766.3 median=792.4 desired=off high_since=-
+2026-10-30 17:26:34,805 INFO processor EVENT event_id=8bbce019-a667-4559-9782-8d88c4cf0b00 sensor=scd40-1 value=814.0 median=797.4 desired=off high_since=-
+2026-10-30 17:26:34,814 INFO processor EVENT event_id=f7cc15ee-c3e0-47d7-a67c-d4b7027d3cd0 sensor=scd40-2 value=827.3 median=814.0 desired=off high_since=-
+2026-10-30 17:26:34,824 INFO processor EVENT event_id=f9648db2-2e45-4f89-8a77-3c10c11f5a27 sensor=scd40-3 value=790.3 median=814.0 desired=off high_since=-
+2026-10-30 17:26:35,307 INFO processor EVENT event_id=023f4f90-2e4a-4e4e-89d9-bb1bc0e44dd7 sensor=scd40-1 value=840.9 median=827.3 desired=off high_since=-
+2026-10-30 17:26:35,313 INFO processor EVENT event_id=a3965088-3190-47d6-86fa-1d6786f2c089 sensor=scd40-2 value=851.9 median=840.9 desired=off high_since=-
+2026-10-30 17:26:35,324 INFO processor EVENT event_id=80cf2f26-095b-46b1-ac43-c70564a87dd2 sensor=scd40-3 value=825.3 median=840.9 desired=off high_since=-
+2026-10-30 17:26:35,335 WARNING processor TIMEOUT command_id=cmd-0b5e38488c73 action=ventilation_off -> expired, ventilation unknown
+2026-10-30 17:26:35,806 INFO processor EVENT event_id=506f9d6f-e523-4d36-9dd6-160f1bbaf0d7 sensor=scd40-1 value=855.3 median=851.9 desired=off high_since=-
+2026-10-30 17:26:35,807 INFO processor COMMAND sent command_id=cmd-44d1102cccc4 action=ventilation_off expires_at=2026-10-30T15:26:36.806Z
+2026-10-30 17:26:35,852 INFO processor EVENT event_id=b946a490-5556-4144-9af8-0dac13ea296b sensor=scd40-2 value=874.0 median=855.3 desired=off high_since=-
+2026-10-30 17:26:35,854 INFO processor EVENT event_id=97dde057-ae57-4a9b-a379-84f9cc1f78f3 sensor=scd40-3 value=856.0 median=856.0 desired=off high_since=-
+2026-10-30 17:26:36,307 INFO processor EVENT event_id=0d98573e-2496-4235-9287-466bc40366e4 sensor=scd40-1 value=874.7 median=874.0 desired=off high_since=-
+2026-10-30 17:26:36,314 INFO processor EVENT event_id=6aee7452-5153-4c85-a4d9-384a07f8d78d sensor=scd40-2 value=904.3 median=874.7 desired=off high_since=-
+2026-10-30 17:26:36,323 INFO processor EVENT event_id=94026329-2f8d-4b3e-bc6e-fe50238211e6 sensor=scd40-3 value=869.3 median=874.7 desired=off high_since=-
+2026-10-30 17:26:36,802 INFO processor EVENT event_id=59e44a76-6961-4cdb-b04c-e6f98e5381d7 sensor=scd40-1 value=903.4 median=903.4 desired=off high_since=-
+2026-10-30 17:26:36,812 INFO processor EVENT event_id=ee49f169-ef41-4969-ba96-69464eea01ed sensor=scd40-2 value=927.4 median=903.4 desired=off high_since=-
+2026-10-30 17:26:36,824 INFO processor EVENT event_id=d1a0ca91-e29b-46d3-9e39-04966c78a72e sensor=scd40-3 value=891.8 median=903.4 desired=off high_since=-
+2026-10-30 17:26:36,844 WARNING processor TIMEOUT command_id=cmd-44d1102cccc4 action=ventilation_off -> expired, ventilation unknown
+2026-10-30 17:26:37,306 INFO processor EVENT event_id=439604a5-f2a8-4044-ace6-b4e91a55c029 sensor=scd40-1 value=1063.6 median=927.4 desired=off high_since=-
+2026-10-30 17:26:37,306 INFO processor COMMAND sent command_id=cmd-90cde8c6f0ba action=ventilation_off expires_at=2026-10-30T15:26:38.306Z
+2026-10-30 17:26:37,353 INFO processor EVENT event_id=016679b5-3b01-473e-a456-b4eaf79db5fa sensor=scd40-2 value=1070.6 median=1063.6 desired=off high_since=2026-10-30T15:26:37.310Z
+2026-10-30 17:26:37,358 INFO processor EVENT event_id=e75c3f61-e48f-4794-8db5-8074be7985c0 sensor=scd40-3 value=1050.1 median=1063.6 desired=off high_since=2026-10-30T15:26:37.310Z
+2026-10-30 17:26:37,807 INFO processor EVENT event_id=c09b4061-6233-46d7-a82d-ea4d32ba58a3 sensor=scd40-1 value=1064.2 median=1064.2 desired=off high_since=2026-10-30T15:26:37.310Z
+2026-10-30 17:26:37,814 INFO processor EVENT event_id=0711d338-ef8f-4888-9ef8-3fb714d9c86d sensor=scd40-2 value=1073.8 median=1064.2 desired=off high_since=2026-10-30T15:26:37.310Z
+2026-10-30 17:26:37,824 INFO processor EVENT event_id=d66e2256-c94b-474b-be7c-7c4e678a1ad0 sensor=scd40-3 value=1047.6 median=1064.2 desired=off high_since=2026-10-30T15:26:37.310Z
+2026-10-30 17:26:38,307 INFO processor EVENT event_id=83bd76b4-d290-428c-a039-9140233a659c sensor=scd40-1 value=1073.4 median=1073.4 desired=off high_since=2026-10-30T15:26:37.310Z
+2026-10-30 17:26:38,313 INFO processor EVENT event_id=7924e221-9c10-4eb9-b660-99dff0e134b5 sensor=scd40-2 value=1089.6 median=1073.4 desired=off high_since=2026-10-30T15:26:37.310Z
+2026-10-30 17:26:38,325 INFO processor EVENT event_id=0f801b3d-6097-4b01-933a-c946ad3d735d sensor=scd40-3 value=1048.8 median=1073.4 desired=off high_since=2026-10-30T15:26:37.310Z
+2026-10-30 17:26:38,358 WARNING processor TIMEOUT command_id=cmd-90cde8c6f0ba action=ventilation_off -> expired, ventilation unknown
+2026-10-30 17:26:38,806 INFO processor EVENT event_id=e5551447-53c4-4cfb-ad2c-33f1c2aad844 sensor=scd40-1 value=1063.7 median=1063.7 desired=off high_since=2026-10-30T15:26:37.310Z
+2026-10-30 17:26:38,807 INFO processor COMMAND sent command_id=cmd-f4e0d5003672 action=ventilation_off expires_at=2026-10-30T15:26:39.806Z
+2026-10-30 17:26:38,854 INFO processor EVENT event_id=cb9c85f6-6263-4096-928a-c42a4c0f80a3 sensor=scd40-2 value=1090.4 median=1063.7 desired=off high_since=2026-10-30T15:26:37.310Z
+2026-10-30 17:26:38,855 INFO processor EVENT event_id=f796b14d-d098-4e29-bd44-beebfe4a4d2b sensor=scd40-3 value=1068.2 median=1068.2 desired=off high_since=2026-10-30T15:26:37.310Z
+2026-10-30 17:26:39,308 INFO processor EVENT event_id=554d2855-bcc8-4426-a0c0-e56c84c10ad0 sensor=scd40-1 value=1063.8 median=1068.2 desired=off high_since=2026-10-30T15:26:37.310Z
+2026-10-30 17:26:39,314 INFO processor EVENT event_id=e694abb4-215e-439f-a5ab-d913cba8877b sensor=scd40-2 value=1083.8 median=1068.2 desired=off high_since=2026-10-30T15:26:37.310Z
+2026-10-30 17:26:39,323 INFO processor EVENT event_id=aa5a5f0a-eff2-461d-8285-82df2eac850f sensor=scd40-3 value=1071.2 median=1071.2 desired=off high_since=2026-10-30T15:26:37.310Z
+2026-10-30 17:26:39,808 INFO processor EVENT event_id=a34cbd09-a1ac-473b-bb84-1f66ab2fa032 sensor=scd40-1 value=1090.5 median=1083.8 desired=off high_since=2026-10-30T15:26:37.310Z
+2026-10-30 17:26:39,813 INFO processor EVENT event_id=101b661d-cd23-4bf1-8299-8e53341fb2ba sensor=scd40-2 value=1097.7 median=1090.5 desired=off high_since=2026-10-30T15:26:37.310Z
+2026-10-30 17:26:39,824 INFO processor EVENT event_id=33940b39-bfb3-4e07-b65b-51e64a047894 sensor=scd40-3 value=1055.4 median=1090.5 desired=off high_since=2026-10-30T15:26:37.310Z
+2026-10-30 17:26:39,871 WARNING processor TIMEOUT command_id=cmd-f4e0d5003672 action=ventilation_off -> expired, ventilation unknown
+2026-10-30 17:26:40,307 INFO processor EVENT event_id=b3a2c872-6e4d-4a07-9e85-2d24e77de882 sensor=scd40-1 value=1088.2 median=1088.2 desired=off high_since=2026-10-30T15:26:37.310Z
+2026-10-30 17:26:40,308 INFO processor COMMAND sent command_id=cmd-5832aa5dea4c action=ventilation_off expires_at=2026-10-30T15:26:41.307Z
+2026-10-30 17:26:40,353 INFO processor EVENT event_id=1f445415-1e73-424f-a319-134667549f50 sensor=scd40-2 value=1092.4 median=1088.2 desired=off high_since=2026-10-30T15:26:37.310Z
+2026-10-30 17:26:40,354 INFO processor EVENT event_id=b8c09368-b61c-46e8-9f0f-2c84049e335b sensor=scd40-3 value=1065.4 median=1088.2 desired=off high_since=2026-10-30T15:26:37.310Z
+2026-10-30 17:26:40,806 INFO processor EVENT event_id=784c15d8-7262-4634-b336-53616e8a19c3 sensor=scd40-1 value=1083.9 median=1083.9 desired=off high_since=2026-10-30T15:26:37.310Z
+2026-10-30 17:26:40,813 INFO processor EVENT event_id=211ac6c8-eabc-4e79-86b7-6c691a13560a sensor=scd40-2 value=1088.0 median=1083.9 desired=off high_since=2026-10-30T15:26:37.310Z
+2026-10-30 17:26:40,825 INFO processor EVENT event_id=eb4afd59-5ce2-4407-b7ae-8fed9547a0a8 sensor=scd40-3 value=1064.5 median=1083.9 desired=off high_since=2026-10-30T15:26:37.310Z
+2026-10-30 17:26:41,386 WARNING processor TIMEOUT command_id=cmd-5832aa5dea4c action=ventilation_off -> expired, ventilation unknown
