@@ -20,9 +20,12 @@ from contract import ID_RE, iso, parse_time, utc_now
 DASHBOARD = Path(__file__).with_name("dashboard.html")
 
 
-def ventilation_view(actuator, command):
-    """Стан для інтерфейсу: on/off лише за ACK; без ACK до дедлайну - unknown."""
+def ventilation_view(actuator, command, now=None):
+    """Стан для інтерфейсу: on/off лише за ACK; без ACK до дедлайну - unknown.
+    Дедлайн перевіряється тут же, тож панель не чекає наступного sweep() обробника."""
     if command and command["status"] in ("created", "sent"):
+        if now is not None and now > parse_time(command["expires_at"]):
+            return "unknown"
         return "pending"
     if command and command["status"] in ("expired", "rejected"):
         if not actuator or actuator["confirmed_at"] < command["issued_at"]:
@@ -63,7 +66,7 @@ def device_state(db, device_id, now):
         "sensors": sensors,
         "rule": {"desired": rule["ventilation_desired"], "high_since": rule["high_since"],
                  "hold_elapsed_s": hold_elapsed} if rule else None,
-        "ventilation": ventilation_view(actuator, command),
+        "ventilation": ventilation_view(actuator, command, now),
         "actuator": actuator,
         "last_command": command,
     }

@@ -6,7 +6,7 @@ from datetime import timedelta
 import config
 import storage
 from api import ventilation_view
-from contract import encode, make_ack, make_state
+from contract import encode, iso, make_ack, make_state
 from helpers import ACK, Bench
 
 P = config.SAMPLE_PERIOD_S
@@ -123,11 +123,23 @@ class Faults(Base):
         command = self.drive_on()[0]
         self.b.clock.advance(config.COMMAND_TTL_S + 1)
         self.assertEqual(self.b.processor.sweep(), [command["command_id"]])
-        self.assertEqual(storage.get_command(self.b.db, command["command_id"])["status"], "expired")
+        row = storage.get_command(self.b.db, command["command_id"])
+        self.assertEqual(row["status"], "expired")
+        self.assertEqual(row["closed_at"], iso(self.b.clock()))   # момент закриття фіксується (К4)
         self.assertEqual(self.view(), "unknown")            # не "off"
         # запізнілий ACK не робить команду applied
         self.assertEqual(self.b.ack(command)["result"], "late")
         self.assertEqual(storage.get_command(self.b.db, command["command_id"])["status"], "expired")
+
+    def test_view_unknown_right_after_deadline_before_sweep(self):
+        command = self.drive_on()[0]
+        db = self.b.db
+        row = storage.last_command(db, config.DEVICE_ID)
+        actuator = storage.get_actuator(db, config.DEVICE_ID)
+        self.assertEqual(ventilation_view(actuator, row, self.b.clock()), "pending")
+        self.b.clock.advance(config.COMMAND_TTL_S + 0.01)        # sweep() ще не викликався
+        self.assertEqual(storage.get_command(db, command["command_id"])["status"], "sent")
+        self.assertEqual(ventilation_view(actuator, row, self.b.clock()), "unknown")
 
     def test_after_timeout_reconcile_issues_new_command(self):
         first = self.drive_on()[0]

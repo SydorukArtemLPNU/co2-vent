@@ -54,7 +54,7 @@ MAX_FUTURE_S = 5.0                   # допустимий випереджен
 # Команди
 ACTIONS = ("ventilation_on", "ventilation_off")
 COMMAND_TTL_S = 10.0 / TIME_SCALE
-SWEEP_PERIOD_S = 0.5
+SWEEP_PERIOD_S = 0.1                 # період перевірки тайм-аутів (К4: запізнення ≤ 0,1 с)
 
 
 def topic(kind, device_id=None):

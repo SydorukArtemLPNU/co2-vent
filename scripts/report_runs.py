@@ -7,6 +7,7 @@ python scripts/report_runs.py [logs] > logs/SUMMARY.md
   команда     ack_at - issued_at         (обробник -> брокер -> агент/ESP -> Uno -> ACK)
 Час утримання: від першої події серії з медіаною > 1000 ppm до події-тригера ventilation_on,
 у сценарних секундах (x time_scale).
+К4: запізнення позначки expired = closed_at - expires_at (стовпець closed_at є з версії v1.1).
 """
 import re
 import sqlite3
@@ -59,8 +60,14 @@ def analyse(run):
         while start > 0 and (events[start - 1]["co2_median"] or 0) > 1000:
             start -= 1
         holds.append((ts(events[trigger]["observed_at"]) - ts(events[start]["observed_at"])).total_seconds() * scale)
+    columns = {row[1] for row in db.execute("PRAGMA table_info(commands)")}
+    lateness = None
+    if "closed_at" in columns:
+        lateness = [(ts(c["closed_at"]) - ts(c["expires_at"])).total_seconds() * 1000
+                    for c in commands if c["status"] == "expired" and c["closed_at"]]
     return {"run": run.name, "scale": scale, "events": len(events), "telemetry": telemetry,
-            "rtt": rtt, "statuses": statuses, "rejected": rejected, "holds": holds}
+            "rtt": rtt, "statuses": statuses, "rejected": rejected, "holds": holds,
+            "lateness": lateness}
 
 
 def main():
@@ -84,6 +91,18 @@ def main():
         for hold in r["holds"]:
             verdict = "✅" if HOLD_S <= hold < HOLD_S + PERIOD_S else "❌"
             print(f"- {verdict} `{r['run']}`: {hold:.2f} с")
+    print("\n## Критерій К4: позначка expired не пізніше TTL + 0,5 с\n")
+    print("Запізнення = closed_at − expires_at, мс (лише прогони з v1.1, де є closed_at).\n")
+    for r in results:
+        if r["lateness"] is None:
+            if r["statuses"].get("expired"):
+                print(f"- — `{r['run']}`: closed_at не записувався (до v1.1)")
+            continue
+        if r["lateness"]:
+            worst = max(r["lateness"])
+            verdict = "✅" if worst <= 500 else "❌"
+            print(f"- {verdict} `{r['run']}`: {len(r['lateness'])} команд expired, "
+                  f"запізнення {min(r['lateness']):.0f}…{worst:.0f} мс")
 
 
 if __name__ == "__main__":

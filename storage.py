@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS commands (
   command_id TEXT PRIMARY KEY, device_id TEXT NOT NULL, action TEXT NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('created','sent','applied','rejected','expired')),
   issued_at TEXT NOT NULL, expires_at TEXT NOT NULL,
-  trigger_event_id TEXT, ack_at TEXT, reason TEXT
+  trigger_event_id TEXT, ack_at TEXT, reason TEXT,
+  closed_at TEXT                        -- коли обробник закрив команду (applied/rejected/expired)
 );
 CREATE INDEX IF NOT EXISTS commands_device_time ON commands(device_id, issued_at);
 CREATE TABLE IF NOT EXISTS actuator (
@@ -125,14 +126,15 @@ def save_command(db, command, status="created", trigger_event_id=None):
     db.commit()
 
 
-def set_command_status(db, command_id, status, *, from_statuses, ack_at=None, reason=None):
+def set_command_status(db, command_id, status, *, from_statuses, ack_at=None, reason=None,
+                       closed_at=None):
     """Перехід стану лише з дозволених станів; повертає True, якщо відбувся."""
     marks = ",".join("?" * len(from_statuses))
     cur = db.execute(
         f"""UPDATE commands SET status = ?, ack_at = COALESCE(?, ack_at),
-            reason = COALESCE(?, reason)
+            reason = COALESCE(?, reason), closed_at = COALESCE(?, closed_at)
             WHERE command_id = ? AND status IN ({marks})""",
-        (status, ack_at, reason, command_id, *from_statuses))
+        (status, ack_at, reason, closed_at, command_id, *from_statuses))
     db.commit()
     return cur.rowcount == 1
 

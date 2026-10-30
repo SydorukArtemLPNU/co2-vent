@@ -126,18 +126,20 @@ class Processor:
         if ack["status"] == "rejected":
             if not late:
                 storage.set_command_status(self.db, cid, "rejected", from_statuses=("created", "sent"),
-                                           ack_at=stamp, reason=ack.get("reason"))
+                                           ack_at=stamp, reason=ack.get("reason"), closed_at=iso(received))
             log.warning("ACK rejected command_id=%s reason=%s", cid, ack.get("reason"))
             return {"result": "rejected", "command_id": cid}
         if late:
             # після дедлайну команда лишається expired, але факт стану виконавця врахуємо
-            storage.set_command_status(self.db, cid, "expired", from_statuses=("created", "sent"))
+            storage.set_command_status(self.db, cid, "expired", from_statuses=("created", "sent"),
+                                       closed_at=iso(received))
             storage.note_command(self.db, cid, "late ack after deadline", stamp)
             storage.set_actuator(self.db, self.device_id, ack["ventilation"], cid, stamp)
             log.warning("ACK late command_id=%s ventilation=%s - status stays expired", cid, ack["ventilation"])
             self._reconcile()
             return {"result": "late", "command_id": cid}
-        storage.set_command_status(self.db, cid, "applied", from_statuses=("created", "sent"), ack_at=stamp)
+        storage.set_command_status(self.db, cid, "applied", from_statuses=("created", "sent"), ack_at=stamp,
+                                   closed_at=iso(received))
         storage.set_actuator(self.db, self.device_id, ack["ventilation"], cid, stamp)
         log.info("ACK applied command_id=%s ventilation=%s", cid, ack["ventilation"])
         self._reconcile()        # бажаний стан міг змінитися, поки чекали ACK
@@ -172,7 +174,7 @@ class Processor:
                 if now > parse_time(command["expires_at"]):
                     if storage.set_command_status(self.db, command["command_id"], "expired",
                                                   from_statuses=("created", "sent"),
-                                                  reason="no ack before deadline"):
+                                                  reason="no ack before deadline", closed_at=iso(now)):
                         expired.append(command["command_id"])
                         log.warning("TIMEOUT command_id=%s action=%s -> expired, ventilation unknown",
                                     command["command_id"], command["action"])

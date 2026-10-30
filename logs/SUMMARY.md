@@ -11,6 +11,8 @@
 | `run-20261030T155552Z-x10-hw-unoreset-wifidrop-crc` | 10 | 296 | 6.0 / 1477.0 / 2864.0 (n=296) | 51.0 / 60.0 / 60.0 (n=3) | applied 3 | — | 180.9 |
 | `run-20261030T161007Z-x1` | 1 | 323 | 3.0 / 6.0 / 18.0 (n=323) | 4.0 / 5.0 / 5.0 (n=3) | applied 3 | device_id mismatch with topic 1, duplicate event_id 1, stale event 1, unknown unit 1, value is not a number 1, value out of range 1 | 180.1 |
 | `run-20261030T161936Z-x1-hw` | 1 | 326 | 4.0 / 12.0 / 42.0 (n=326) | 91.5 / 104.0 / 104.0 (n=2) | applied 2 | — | 180.0 |
+| `run-20261030T170749Z-x10-noagent` | 10 | 60 | 2.0 / 38.0 / 43.0 (n=60) | — | expired 8 | — | — |
+| `run-20261030T170809Z-x1-noagent` | 1 | 36 | 3.0 / 3.0 / 5.0 (n=36) | — | expired 5, sent 1 | — | — |
 
 ## Критерій К1: утримання 180 с
 
@@ -22,3 +24,11 @@
 - ✅ `run-20261030T155552Z-x10-hw-unoreset-wifidrop-crc`: 180.92 с
 - ✅ `run-20261030T161007Z-x1`: 180.10 с
 - ✅ `run-20261030T161936Z-x1-hw`: 180.01 с
+
+## Критерій К4: позначка expired не пізніше TTL + 0,5 с
+
+Запізнення = closed_at − expires_at, мс (лише прогони з v1.1, де є closed_at).
+
+- — `run-20261030T152629Z-x10-noagent`: closed_at не записувався (до v1.1)
+- ✅ `run-20261030T170749Z-x10-noagent`: 8 команд expired, запізнення 0…91 мс
+- ✅ `run-20261030T170809Z-x1-noagent`: 5 команд expired, запізнення 13…87 мс
