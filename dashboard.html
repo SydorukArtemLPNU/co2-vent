@@ -153,9 +153,9 @@ function renderRejected(rows) {
 
 async function tick() {
   try {
-    const base = `/api/devices/${encodeURIComponent(DEVICE)}`;
+    const base = `api/devices/${encodeURIComponent(DEVICE)}`;
     const [state, events, commands, rejected] = await Promise.all([
-      get(base + "/state"), get(base + "/events?limit=300"), get(base + "/commands?limit=10"), get("/api/rejected?limit=10")]);
+      get(base + "/state"), get(base + "/events?limit=300"), get(base + "/commands?limit=10"), get("api/rejected?limit=10")]);
     renderState(state); renderChart(events, state.thresholds); renderCommands(commands); renderRejected(rejected);
   } catch (err) {
     document.getElementById("meta").textContent = "немає даних: " + err.message;

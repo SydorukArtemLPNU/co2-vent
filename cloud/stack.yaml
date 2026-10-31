@@ -85,7 +85,15 @@ Resources:
   PanelSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: "co2vent panel :8000 - ingress only for the IP that started the run (managed by Lambda)"
+      GroupDescription: "co2vent run task - panel :8000 only from the in-VPC panel proxy Lambda"
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - {IpProtocol: tcp, FromPort: 8000, ToPort: 8000, SourceSecurityGroupId: !GetAtt ProxySecurityGroup.GroupId}
+
+  ProxySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "co2vent panel proxy Lambda - no ingress"
       VpcId: !Ref VpcId
 
   # --- автентифікація: Cognito (лише створені адміністратором користувачі) ------------------
@@ -147,11 +155,8 @@ Resources:
                 Action: iam:PassRole
                 Resource: [!GetAtt TaskExecRole.Arn, !GetAtt TaskRole.Arn]
               - Effect: Allow
-                Action: [ec2:DescribeNetworkInterfaces, ec2:DescribeSecurityGroups]
-                Resource: "*"
-              - Effect: Allow
-                Action: [ec2:AuthorizeSecurityGroupIngress, ec2:RevokeSecurityGroupIngress]
-                Resource: !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/${PanelSecurityGroup.GroupId}"
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt ProxyFunction.Arn
               - Effect: Allow
                 Action: s3:ListBucket
                 Resource: !Sub "arn:aws:s3:::${ResultsBucket}"
@@ -179,6 +184,31 @@ Resources:
           BUCKET: !Ref ResultsBucket
           COGNITO_DOMAIN: !Sub "co2vent-${AWS::AccountId}.auth.${AWS::Region}.amazoncognito.com"
           CLIENT_ID: !Ref UserPoolClient
+          PROXY_FUNCTION: !Ref ProxyFunction
+
+  # --- проксі вебпанелі: у VPC, щоб до :8000 задачі мала доступ лише вона (IP задачі назовні не видно) ---
+  ProxyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement: [{Effect: Allow, Principal: {Service: lambda.amazonaws.com}, Action: sts:AssumeRole}]
+      ManagedPolicyArns: [arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole]
+
+  ProxyFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: co2vent-panel-proxy
+      Runtime: python3.12
+      Architectures: [arm64]
+      Handler: proxy.handler
+      Timeout: 8
+      MemorySize: 128
+      Role: !GetAtt ProxyRole.Arn
+      Code: {S3Bucket: !Ref ResultsBucket, S3Key: !Ref LambdaCodeKey}
+      VpcConfig:
+        SubnetIds: !Ref SubnetIds
+        SecurityGroupIds: [!GetAtt ProxySecurityGroup.GroupId]
 
   HttpApi:
     Type: AWS::ApiGatewayV2::Api
@@ -186,11 +216,14 @@ Resources:
 
   ApiStage:
     Type: AWS::ApiGatewayV2::Stage
+    DependsOn: RoutePanel
     Properties:
       ApiId: !Ref HttpApi
       StageName: $default
       AutoDeploy: true
       DefaultRouteSettings: {ThrottlingBurstLimit: 5, ThrottlingRateLimit: 2}
+      RouteSettings:   # вебпанель опитує 4 ресурси щосекунди
+        "GET /panel/{proxy+}": {ThrottlingBurstLimit: 20, ThrottlingRateLimit: 10}
 
   ApiIntegration:
     Type: AWS::ApiGatewayV2::Integration
@@ -226,6 +259,10 @@ Resources:
     Type: AWS::ApiGatewayV2::Route
     Properties: {ApiId: !Ref HttpApi, RouteKey: "POST /stop", Target: !Sub "integrations/${ApiIntegration}",
                  AuthorizationType: JWT, AuthorizerId: !Ref JwtAuthorizer}
+
+  RoutePanel:   # без JWT (звичайна навігація браузера); Lambda пускає лише з IP, що запустив прогін
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref HttpApi, RouteKey: "GET /panel/{proxy+}", Target: !Sub "integrations/${ApiIntegration}"}
 
   ApiInvokePermission:
     Type: AWS::Lambda::Permission

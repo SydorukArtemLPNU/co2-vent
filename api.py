@@ -6,7 +6,9 @@ GET /api/devices/<id>/state             медіана, давачі, прави
 GET /api/devices/<id>/events?limit=30[&sensor=scd40-1]
 GET /api/devices/<id>/commands?limit=10
 GET /api/rejected?limit=10
+Якщо задано PZIR_PANEL_KEY, кожен запит має нести заголовок X-Panel-Key (інакше 403).
 """
+import hmac
 import json
 from datetime import timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -74,11 +76,14 @@ def device_state(db, device_id, now):
 
 class Handler(BaseHTTPRequestHandler):
     db_path = config.DB_PATH
+    panel_key = config.PANEL_KEY
 
     def log_message(self, format, *args):      # без журналу кожного запиту
         pass
 
     def do_GET(self):
+        if self.panel_key and not hmac.compare_digest(self.headers.get("X-Panel-Key", ""), self.panel_key):
+            return self.reply(403, {"error": "forbidden"})
         url = urlsplit(self.path)
         query = parse_qs(url.query)
         if url.path == "/":

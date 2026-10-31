@@ -226,7 +226,7 @@ function start() {
 async function run(scale, faults) {
   $("start").disabled = true;
   const r = await api("run", { method: "POST", body: JSON.stringify({ scale, faults }) });
-  say(r.ok ? `Запущено ${r.data.run_id} (×${r.data.scale}). Контейнер стартує ≈ 30–60 с; панель – лише з ${r.data.panel_allowed_ip}.`
+  say(r.ok ? `Запущено ${r.data.run_id} (×${r.data.scale}). Контейнер стартує ≈ 30–60 с.`
           : (r.data.error || `помилка ${r.status}`));
   refresh();
 }

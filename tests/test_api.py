@@ -28,9 +28,9 @@ class ApiTest(unittest.TestCase):
         cls.server.server_close()
         cls.b.close()
 
-    def get(self, path):
+    def get(self, path, headers=None):
         try:
-            with urllib.request.urlopen(self.base + path) as response:
+            with urllib.request.urlopen(urllib.request.Request(self.base + path, headers=headers or {})) as response:
                 return response.status, json.loads(response.read())
         except urllib.error.HTTPError as exc:
             with exc:
@@ -65,6 +65,16 @@ class ApiTest(unittest.TestCase):
     def test_rejected_listed(self):
         status, rows = self.get("/api/rejected?limit=5")
         self.assertEqual((status, rows[0]["reason"]), (200, "value is not a number"))
+
+    def test_panel_key_required_when_set(self):
+        path = f"/api/devices/{config.DEVICE_ID}/latest"
+        try:
+            self.server.RequestHandlerClass.panel_key = "k1"
+            self.assertEqual(self.get(path)[0], 403)
+            self.assertEqual(self.get(path, {"X-Panel-Key": "bad"})[0], 403)
+            self.assertEqual(self.get(path, {"X-Panel-Key": "k1"})[0], 200)
+        finally:
+            self.server.RequestHandlerClass.panel_key = None
 
 
 if __name__ == "__main__":

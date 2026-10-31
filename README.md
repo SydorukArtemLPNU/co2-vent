@@ -134,8 +134,10 @@ PZIR_BROKER_HOST=127.0.0.1 PZIR_BROKER_PORT=1883 PZIR_BROKER_TLS=0 scripts/demo.
    POST /run     ┐
    GET  /status  ├ лише з токеном Cognito (Hosted UI, PKCE; користувачів створює тільки адміністратор)
    POST /stop    ┘
-      → Lambda co2vent-control → ECS Fargate (ARM64, 0,5 vCPU / 1 ГБ), образ cloud/Dockerfile:
+   GET  /panel/dashboard   вебпанель прогону через той самий HTTPS-домен (лише з IP, що запустив прогін)
+      → Lambda co2vent-control → ECS Fargate (ARM64, 1 vCPU / 2 ГБ), образ cloud/Dockerfile:
            сертифікати з SSM → прошивка Uno в simavr + моделі → AWS IoT Core → обробник + панель :8000
+           панель :8000 ← Lambda co2vent-panel-proxy (у VPC; єдине джерело, якому відкрито порт)
            → результати в S3 (runs/, зберігаються 30 днів) → контейнер зупиняється
 ```
 
@@ -145,12 +147,13 @@ aws cognito-idp admin-create-user --user-pool-id <UserPoolId> --username <пош
     --user-attributes Name=email,Value=<пошта> Name=email_verified,Value=true --desired-delivery-mediums EMAIL
 ```
 
-Далі відкрий `ControlUrl`, увійди й обери прогін: «×10, норма», «×10 з відмовами» або «×1».
+Далі відкрий `ControlUrl`, увійди, обери режим («норма ×10», «з відмовами ×10» або «реальний час ×1») і натисни «Запустити».
 
 **Захист:**
 - маршрути керування без JWT повертають 401;
 - одночасно може йти лише один прогін;
-- порт 8000 панелі відкривається лише для IP того, хто запустив прогін, і попереднє правило при цьому знімається;
+- вебпанель доступна лише через `…/panel/dashboard` і лише з IP того, хто запустив прогін; IP контейнера назовні не видно;
+- порт 8000 контейнера відкритий тільки для групи безпеки проксі-Lambda у VPC, а сама панель ще й вимагає випадковий ключ прогону (`X-Panel-Key`);
 - контейнер має жорсткий ліміт часу `MAX_RUN_S` = 1500 с;
 - бюджет надсилає сповіщення про будь-які витрати понад $0,01 без урахування кредитів;
 - сертифікати лежать у SSM як SecureString, а не в образі.

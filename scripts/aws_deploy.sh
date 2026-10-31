@@ -48,7 +48,7 @@ echo "image: $IMAGE"
 
 # --- 4. Lambda --------------------------------------------------------------------
 ZIP="$(mktemp -d)/control.zip"
-(cd cloud/lambda && zip -q -X "$ZIP" handler.py page.html)
+(cd cloud/lambda && zip -q -X "$ZIP" handler.py proxy.py page.html)
 KEY="lambda/control-$(shasum -a 256 "$ZIP" | cut -c1-12).zip"
 aws s3 cp "$ZIP" "s3://$BUCKET/$KEY" --quiet
 

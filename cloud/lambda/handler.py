@@ -4,12 +4,15 @@ GET  /        сторінка керування (без секретів; вх
 POST /run     {"scale": 10|1, "faults": bool} - запуск ECS Fargate задачі   } лише з JWT
 GET  /status  поточний прогін, адреса панелі, останні результати в S3       } Cognito
 POST /stop    зупинити поточний прогін                                      }
-Захист кредитів: одночасно лише один прогін; порт панелі 8000 відкривається тільки
-для IP того, хто запустив; контейнер має власний ліміт часу (MAX_RUN_S).
+GET  /panel/dashboard (+ /panel/api/…) вебпанель прогону через цей же HTTPS-домен (через proxy.py у VPC):
+              лише з IP, з якого прогін запущено; IP контейнера назовні не видно
+Захист кредитів: одночасно лише один прогін; контейнер має власний ліміт часу (MAX_RUN_S).
+Панель контейнера відповідає лише з ключем прогону (X-Panel-Key), який знає тільки ця функція.
 """
 import base64
 import json
 import os
+import secrets
 import time
 from pathlib import Path
 
@@ -19,7 +22,7 @@ from botocore.config import Config
 ENV = os.environ
 REGION = ENV.get("AWS_REGION", "eu-north-1")
 ecs = boto3.client("ecs")
-ec2 = boto3.client("ec2")
+lam = boto3.client("lambda")
 # посилання підписуються для регіонального хоста бакета: глобальний s3.amazonaws.com
 # перенаправляє на s3.<region>, і тоді підпис (заголовок host) не збігається - SignatureDoesNotMatch
 s3 = boto3.client("s3", region_name=REGION, endpoint_url=f"https://s3.{REGION}.amazonaws.com",
@@ -40,28 +43,42 @@ def active_tasks():
     return ecs.describe_tasks(cluster=ENV["CLUSTER"], tasks=arns)["tasks"] if arns else []
 
 
-def open_panel_for(ip):
-    """Порт 8000 лише для однієї адреси: попередні правила знімаються."""
-    sg = ec2.describe_security_groups(GroupIds=[ENV["SECURITY_GROUP"]])["SecurityGroups"][0]
-    if sg["IpPermissions"]:
-        ec2.revoke_security_group_ingress(GroupId=sg["GroupId"], IpPermissions=sg["IpPermissions"])
-    rng = {"Ipv6Ranges": [{"CidrIpv6": f"{ip}/128"}]} if ":" in ip else {"IpRanges": [{"CidrIp": f"{ip}/32"}]}
-    ec2.authorize_security_group_ingress(GroupId=sg["GroupId"], IpPermissions=[
-        {"IpProtocol": "tcp", "FromPort": 8000, "ToPort": 8000, **rng}])
+def task_env(task):
+    return {e["name"]: e["value"] for o in task.get("overrides", {}).get("containerOverrides", [])
+            for e in o.get("environment", [])}
 
 
 def task_info(task):
-    env = {e["name"]: e["value"] for o in task.get("overrides", {}).get("containerOverrides", [])
-           for e in o.get("environment", [])}
-    ip = None
-    for att in task.get("attachments", []):
-        eni = next((d["value"] for d in att.get("details", []) if d["name"] == "networkInterfaceId"), None)
-        if eni:
-            nic = ec2.describe_network_interfaces(NetworkInterfaceIds=[eni])["NetworkInterfaces"]
-            ip = nic[0].get("Association", {}).get("PublicIp") if nic else None
+    env = task_env(task)
+    running = task["lastStatus"] == "RUNNING"
     return {"run_id": env.get("RUN_ID"), "scale": env.get("PZIR_TIME_SCALE"), "faults": bool(env.get("FAULTS")),
             "status": task["lastStatus"], "started_at": task.get("startedAt") or task.get("createdAt"),
-            "panel": f"http://{ip}:8000/" if ip and task["lastStatus"] == "RUNNING" else None}
+            "panel": "panel/dashboard" if running else None}
+
+
+def proxy_panel(event, ip):
+    """GET /panel/<path> -> http://<IP задачі>:8000/<path> з ключем прогону."""
+    page = lambda status, text: reply(status, f"<p style='font:15px system-ui;margin:40px'>{text}</p>", "text/html")
+    task = next((t for t in active_tasks() if t["lastStatus"] == "RUNNING"), None)
+    if not task:
+        return page(404, "Зараз немає запущеного прогону. <a href='../'>Назад</a>")
+    env = task_env(task)
+    if env.get("PANEL_IP") != ip:
+        return page(403, "Вебпанель доступна лише з адреси, з якої запущено прогін.")
+    target = next((d["value"] for att in task.get("attachments", []) for d in att.get("details", [])
+                   if d["name"] == "privateIPv4Address"), None)
+    if not target:
+        return page(503, "Контейнер ще отримує адресу, спробуйте за кілька секунд.")
+    path = event.get("pathParameters", {}).get("proxy", "")
+    path = "" if path == "dashboard" else path       # panel/dashboard -> "/": відносні api/... лишаються під panel/
+    out = json.loads(lam.invoke(FunctionName=ENV["PROXY_FUNCTION"], Payload=json.dumps(
+        {"ip": target, "path": path, "query": event.get("rawQueryString", ""),
+         "key": env.get("PZIR_PANEL_KEY", "")}))["Payload"].read())
+    if "body" not in out:
+        return page(502, "Панель контейнера ще не відповідає, спробуйте за кілька секунд.")
+    status, body, ctype = out["status"], out["body"], out["ctype"]
+    return {"statusCode": status, "headers": {"Content-Type": ctype, "Cache-Control": "no-store"},
+            "body": body}
 
 
 def recent_results(limit=5):
@@ -85,6 +102,8 @@ def handler(event, context):
     if route == "GET /":
         return reply(200, PAGE, "text/html")
     ip = event["requestContext"]["http"]["sourceIp"]
+    if route == "GET /panel/{proxy+}":
+        return proxy_panel(event, ip)
     user = (event["requestContext"].get("authorizer", {}).get("jwt", {}).get("claims", {}) or {}).get("username", "?")
 
     if route == "GET /status":
@@ -99,10 +118,10 @@ def handler(event, context):
         scale = "1" if str(body.get("scale")) == "1" else "10"
         run_id = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
         env = [{"name": "PZIR_TIME_SCALE", "value": scale}, {"name": "RUN_ID", "value": run_id},
-               {"name": "STARTED_BY", "value": user}]
+               {"name": "STARTED_BY", "value": user}, {"name": "PANEL_IP", "value": ip},
+               {"name": "PZIR_PANEL_KEY", "value": secrets.token_urlsafe(24)}]
         if body.get("faults"):
             env.append({"name": "FAULTS", "value": "1"})
-        open_panel_for(ip)
         resp = ecs.run_task(
             cluster=ENV["CLUSTER"], taskDefinition=ENV["TASK_FAMILY"], launchType="FARGATE", count=1,
             startedBy="co2vent-web",

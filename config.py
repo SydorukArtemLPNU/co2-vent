@@ -47,6 +47,7 @@ DB_PATH = _env("PZIR_DB", "co2vent.db")
 AGENT_DB_PATH = _env("PZIR_AGENT_DB", "agent-state.db")
 API_HOST = _env("PZIR_API_HOST", "127.0.0.1")
 API_PORT = int(_env_float("PZIR_API_PORT", 8000))
+PANEL_KEY = _env("PZIR_PANEL_KEY", None)    # хмара: панель відповідає лише проксі з цим ключем (X-Panel-Key)
 
 # Пристрій: вузол Arduino Uno + ESP8266 з трьома SCD40 у класі
 DEVICE_ID = _env("PZIR_DEVICE_ID", "class-20")
