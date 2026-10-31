@@ -34,6 +34,7 @@
 | `hw/esp_bridge.py` | модель прошивки ESP8266: UART ↔ MQTT з обмеженнями реальних бібліотек |
 | `hw/Dockerfile`, `hw/run.sh` | образ (Debian bookworm, arduino-cli 1.1.1, `arduino:avr@1.8.6`, simavr 1.6) і запуск |
 | `scripts/demo.sh` | наскрізний прогін із журналами в `logs/run-*/` (`HW=1` - на емульованому залізі) |
+| `scripts/aws_setup.sh`, `scripts/aws_deploy.sh`, `cloud/` | AWS IoT Core і CloudWatch; хмарні прогони за запитом (Fargate, Lambda, API Gateway, Cognito) |
 | `tests/` | 77 unittest-тестів (без брокера й Docker) |
 
 ## Середовище
@@ -122,6 +123,41 @@ PZIR_BROKER_HOST=127.0.0.1 PZIR_BROKER_PORT=1883 PZIR_BROKER_TLS=0 scripts/demo.
 Поріг К6 (≤ 100 мс для телеметрії) визначено для локального брокера. Для хмари він не діє, бо одна мережева подорож туди й назад займає ≈ 60–120 мс.
 
 **Вартість.** IoT Core коштує $1 за 1 млн повідомлень і $0,08 за 1 млн хвилин з'єднання; правила — $0,15 за 1 млн. Цілодобова робота обійшлася б ≈ $3 на місяць, прогони курсової — центи. Усе покривають кредити Free plan, а метрики й журнал вкладаються в безкоштовні ліміти CloudWatch.
+
+## Хмарні прогони за запитом (ECS Fargate)
+
+Увесь стенд (емульоване залізо, обробник і вебпанель) може працювати в AWS і запускатися кнопкою. У простої жоден обчислювальний ресурс не працює.
+
+```
+браузер → API Gateway (HTTPS, обмеження 2 запити/с)
+   GET  /        сторінка керування
+   POST /run     ┐
+   GET  /status  ├ лише з токеном Cognito (Hosted UI, PKCE; користувачів створює тільки адміністратор)
+   POST /stop    ┘
+      → Lambda co2vent-control → ECS Fargate (ARM64, 0,5 vCPU / 1 ГБ), образ cloud/Dockerfile:
+           сертифікати з SSM → прошивка Uno в simavr + моделі → AWS IoT Core → обробник + панель :8000
+           → результати в S3 (runs/, зберігаються 30 днів) → контейнер зупиняється
+```
+
+```bash
+AWS_PROFILE=lpnu BUDGET_EMAIL=<пошта> scripts/aws_deploy.sh     # бакет, SSM, образ в ECR, Lambda, стек cloud/stack.yaml, бюджет
+aws cognito-idp admin-create-user --user-pool-id <UserPoolId> --username <пошта> \
+    --user-attributes Name=email,Value=<пошта> Name=email_verified,Value=true --desired-delivery-mediums EMAIL
+```
+
+Далі відкрий `ControlUrl`, увійди й обери прогін: «×10, норма», «×10 з відмовами» або «×1».
+
+**Захист:**
+- маршрути керування без JWT повертають 401;
+- одночасно може йти лише один прогін;
+- порт 8000 панелі відкривається лише для IP того, хто запустив прогін, і попереднє правило при цьому знімається;
+- контейнер має жорсткий ліміт часу `MAX_RUN_S` = 1500 с;
+- бюджет надсилає сповіщення про будь-які витрати понад $0,01 без урахування кредитів;
+- сертифікати лежать у SSM як SecureString, а не в образі.
+
+**Вартість:** ≈ $0,005 за прогін ×10 (Fargate + публічна IPv4). У простої ≈ $0,05 на місяць (ECR, S3).
+
+Знімок хмарної панелі: `docs/aws/panel-fargate.png`.
 
 ## Емульоване залізо
 

@@ -1,0 +1,12 @@
+# образ cloud/Dockerfile: без секретів, локальних середовищ і результатів
+.git
+.venv
+.env
+certs
+logs
+docs
+**/__pycache__
+hw/build
+hw/sim/uno_sim
+*.db
+*.db-*

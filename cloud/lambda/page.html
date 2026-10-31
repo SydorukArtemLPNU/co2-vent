@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Вентиляція класу · хмарні прогони</title>
+<style>
+  body { margin:0; font:15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background:#f6f7f9; color:#1d2330; }
+  main { max-width:820px; margin:0 auto; padding:24px 16px; }
+  h1 { font-size:20px; margin:0 0 4px; } .muted { color:#6b7280; }
+  .card { background:#fff; border:1px solid #e3e6eb; border-radius:8px; padding:16px; margin:14px 0; }
+  button { font:inherit; padding:8px 14px; border-radius:6px; border:1px solid #1f4e9c; background:#1f4e9c; color:#fff; cursor:pointer; margin:4px 6px 4px 0; }
+  button.secondary { background:#fff; color:#1f4e9c; } button.danger { border-color:#b91c1c; background:#b91c1c; }
+  button:disabled { opacity:.5; cursor:default; }
+  table { width:100%; border-collapse:collapse; font-size:14px; } td, th { text-align:left; padding:4px 6px; border-bottom:1px solid #e3e6eb; }
+  code { background:#f1f3f5; padding:1px 4px; border-radius:4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Вентиляція класу · хмарні прогони</h1>
+  <div class="muted">Курсовий проєкт з ПЗІР, варіант 20 · AWS IoT Core + ECS Fargate · дані змодельовані</div>
+
+  <div class="card" id="login" hidden>
+    <p>Запуск прогонів доступний лише після входу.</p>
+    <button onclick="login()">Увійти</button>
+  </div>
+
+  <div id="app" hidden>
+    <div class="card">
+      <b>Запустити прогін</b> <span class="muted">(емульоване залізо: Uno у simavr → ESP8266 → AWS IoT Core → обробник)</span><br>
+      <button onclick="run(10, false)">×10, норма (≈ 1 хв)</button>
+      <button onclick="run(10, true)">×10 з відмовами: RESET Uno, обрив Wi-Fi, збій CRC</button>
+      <button class="secondary" onclick="run(1, false)">×1, реальний час (≈ 10 хв)</button>
+      <button class="danger" onclick="stop()">Зупинити</button>
+      <div class="muted" id="msg"></div>
+    </div>
+    <div class="card">
+      <b>Поточний прогін</b>
+      <div id="active" class="muted">—</div>
+    </div>
+    <div class="card">
+      <b>Останні результати</b> <span class="muted">(посилання діють 1 год)</span>
+      <table id="results"></table>
+    </div>
+    <div class="muted">Вебпанель прогону відкривається лише з IP, з якого його запущено. <a href="#" onclick="logout()">Вийти</a></div>
+  </div>
+</main>
+<script>
+const DOMAIN = "__COGNITO_DOMAIN__", CLIENT_ID = "__CLIENT_ID__";
+const REDIRECT = location.origin + location.pathname;
+const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+async function login() {
+  const verifier = b64url(crypto.getRandomValues(new Uint8Array(32)));
+  sessionStorage.setItem("pkce", verifier);
+  const challenge = b64url(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)));
+  location = `https://${DOMAIN}/oauth2/authorize?response_type=code&client_id=${CLIENT_ID}`
+    + `&redirect_uri=${encodeURIComponent(REDIRECT)}&scope=openid+email`
+    + `&code_challenge_method=S256&code_challenge=${challenge}`;
+}
+function logout() {
+  sessionStorage.clear();
+  location = `https://${DOMAIN}/logout?client_id=${CLIENT_ID}&logout_uri=${encodeURIComponent(REDIRECT)}`;
+}
+async function token() {
+  const code = new URLSearchParams(location.search).get("code");
+  if (code) {
+    history.replaceState(null, "", REDIRECT);
+    const r = await fetch(`https://${DOMAIN}/oauth2/token`, { method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ grant_type: "authorization_code", client_id: CLIENT_ID, code,
+                                  redirect_uri: REDIRECT, code_verifier: sessionStorage.getItem("pkce") || "" }) });
+    if (r.ok) {
+      const t = await r.json();
+      sessionStorage.setItem("token", t.access_token);
+      sessionStorage.setItem("exp", String(Date.now() + t.expires_in * 1000 - 60000));
+    }
+  }
+  const t = sessionStorage.getItem("token");
+  return t && Date.now() < Number(sessionStorage.getItem("exp")) ? t : null;
+}
+async function api(path, opts = {}) {
+  const t = await token();
+  if (!t) { show(false); throw new Error("login required"); }
+  const r = await fetch(path, { ...opts, headers: { ...(opts.headers || {}), Authorization: "Bearer " + t,
+                                                    "Content-Type": "application/json" } });
+  const data = await r.json().catch(() => ({}));
+  if (r.status === 401) { sessionStorage.removeItem("token"); show(false); }
+  return { ok: r.ok, status: r.status, data };
+}
+function show(authed) { document.getElementById("login").hidden = authed; document.getElementById("app").hidden = !authed; }
+async function run(scale, faults) {
+  const r = await api("run", { method: "POST", body: JSON.stringify({ scale, faults }) });
+  document.getElementById("msg").textContent = r.ok ? `Запущено прогін ${r.data.run_id} (×${r.data.scale}); панель – лише з ${r.data.panel_allowed_ip}. Старт контейнера ≈ 30–60 с.`
+                                                    : (r.data.error || `помилка ${r.status}`);
+  refresh();
+}
+async function stop() {
+  const r = await api("stop", { method: "POST" });
+  document.getElementById("msg").textContent = r.ok ? `Зупинено: ${r.data.stopped.length}` : `помилка ${r.status}`;
+  refresh();
+}
+async function refresh() {
+  let r;
+  try { r = await api("status"); } catch { return; }
+  if (!r.ok) return;
+  const a = r.data.active;
+  document.getElementById("active").innerHTML = a.length ? a.map(t =>
+    `${esc(t.run_id)} · ×${esc(t.scale)}${t.faults ? " · з відмовами" : ""} · <b>${esc(t.status)}</b>`
+    + (t.panel ? ` · <a href="${esc(t.panel)}" target="_blank">вебпанель</a>` : " · панель з'явиться після старту")
+  ).join("<br>") : "немає";
+  document.getElementById("results").innerHTML = "<tr><th>прогін</th><th>файлів</th><th>журнали</th></tr>" +
+    r.data.results.map(x => `<tr><td>${esc(x.run)}</td><td>${x.files}</td><td>` +
+      Object.entries(x.links).map(([n, u]) => `<a href="${esc(u)}" target="_blank">${esc(n)}</a>`).join(" · ") + "</td></tr>").join("");
+}
+(async () => { show(!!(await token())); refresh(); setInterval(refresh, 5000); })();
+</script>
+</body>
+</html>

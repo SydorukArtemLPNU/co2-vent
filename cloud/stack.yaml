@@ -1,0 +1,244 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  co2-vent - хмарні прогони за запитом: сторінка керування (API Gateway + Lambda) з входом
+  через Cognito, запуск ECS Fargate задачі з емульованим вузлом і обробником, результати в S3.
+  У простої не працює жоден обчислювальний ресурс.
+
+Parameters:
+  ImageUri: {Type: String, Description: "ECR-образ cloud/Dockerfile (linux/arm64)"}
+  LambdaCodeKey: {Type: String, Description: "ключ zip-архіву Lambda у ResultsBucket"}
+  ResultsBucket: {Type: String, Description: "S3-бакет для артефактів і результатів (створює aws_deploy.sh)"}
+  IotEndpoint: {Type: String, Description: "AWS IoT Core Data-ATS endpoint"}
+  # звичайні рядки: перевірка типів AWS::EC2::* у цьому акаунті (проєкт AWS) не бачить VPC
+  VpcId: {Type: String}
+  SubnetIds: {Type: CommaDelimitedList}
+
+Resources:
+  # --- обчислення: ECS Fargate (платиться лише під час прогону) ---------------------------
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties: {ClusterName: co2vent}
+
+  TaskLogs:
+    Type: AWS::Logs::LogGroup
+    Properties: {LogGroupName: /co2vent/ecs, RetentionInDays: 14}
+
+  TaskExecRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement: [{Effect: Allow, Principal: {Service: ecs-tasks.amazonaws.com}, Action: sts:AssumeRole}]
+      ManagedPolicyArns: [arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy]
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement: [{Effect: Allow, Principal: {Service: ecs-tasks.amazonaws.com}, Action: sts:AssumeRole}]
+      Policies:
+        - PolicyName: co2vent-task
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ssm:GetParameters
+                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/co2vent/*"
+              - Effect: Allow
+                Action: kms:Decrypt
+                Resource: "*"
+                Condition: {StringEquals: {"kms:ViaService": !Sub "ssm.${AWS::Region}.amazonaws.com"}}
+              - Effect: Allow
+                Action: s3:PutObject
+                Resource: !Sub "arn:aws:s3:::${ResultsBucket}/runs/*"
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: co2vent-run
+      Cpu: "512"
+      Memory: "1024"
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      RuntimePlatform: {CpuArchitecture: ARM64, OperatingSystemFamily: LINUX}
+      ExecutionRoleArn: !GetAtt TaskExecRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      ContainerDefinitions:
+        - Name: app
+          Image: !Ref ImageUri
+          Essential: true
+          PortMappings: [{ContainerPort: 8000, Protocol: tcp}]
+          Environment:
+            - {Name: PZIR_BROKER_HOST, Value: !Ref IotEndpoint}
+            - {Name: RESULTS_BUCKET, Value: !Ref ResultsBucket}
+            - {Name: AWS_DEFAULT_REGION, Value: !Ref "AWS::Region"}
+            - {Name: MAX_RUN_S, Value: "1500"}
+            - {Name: PANEL_GRACE_S, Value: "180"}
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref TaskLogs
+              awslogs-region: !Ref "AWS::Region"
+              awslogs-stream-prefix: run
+
+  PanelSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "co2vent panel :8000 - ingress only for the IP that started the run (managed by Lambda)"
+      VpcId: !Ref VpcId
+
+  # --- автентифікація: Cognito (лише створені адміністратором користувачі) ------------------
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: co2vent-users
+      AdminCreateUserConfig: {AllowAdminCreateUserOnly: true}
+      UsernameAttributes: [email]
+      AutoVerifiedAttributes: [email]
+      Policies:
+        PasswordPolicy: {MinimumLength: 10, RequireLowercase: true, RequireNumbers: true, RequireUppercase: true, RequireSymbols: false}
+
+  UserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub "co2vent-${AWS::AccountId}"
+      UserPoolId: !Ref UserPool
+      ManagedLoginVersion: 1
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: co2vent-web
+      GenerateSecret: false
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows: [code]
+      AllowedOAuthScopes: [openid, email]
+      SupportedIdentityProviders: [COGNITO]
+      CallbackURLs: [!Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/"]
+      LogoutURLs: [!Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/"]
+      ExplicitAuthFlows: [ALLOW_REFRESH_TOKEN_AUTH, ALLOW_USER_SRP_AUTH]
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      TokenValidityUnits: {AccessToken: hours, IdToken: hours}
+
+  # --- керування: Lambda + HTTP API ------------------------------------------------------
+  ControlRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement: [{Effect: Allow, Principal: {Service: lambda.amazonaws.com}, Action: sts:AssumeRole}]
+      ManagedPolicyArns: [arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole]
+      Policies:
+        - PolicyName: co2vent-control
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: ecs:RunTask
+                Resource: !Sub "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:task-definition/co2vent-run:*"
+              - Effect: Allow
+                Action: [ecs:ListTasks, ecs:DescribeTasks, ecs:StopTask]
+                Resource: "*"
+                Condition: {ArnEquals: {"ecs:cluster": !GetAtt Cluster.Arn}}
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource: [!GetAtt TaskExecRole.Arn, !GetAtt TaskRole.Arn]
+              - Effect: Allow
+                Action: [ec2:DescribeNetworkInterfaces, ec2:DescribeSecurityGroups]
+                Resource: "*"
+              - Effect: Allow
+                Action: [ec2:AuthorizeSecurityGroupIngress, ec2:RevokeSecurityGroupIngress]
+                Resource: !Sub "arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:security-group/${PanelSecurityGroup.GroupId}"
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !Sub "arn:aws:s3:::${ResultsBucket}"
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub "arn:aws:s3:::${ResultsBucket}/runs/*"
+
+  ControlFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: co2vent-control
+      Runtime: python3.12
+      Architectures: [arm64]
+      Handler: handler.handler
+      Timeout: 20
+      MemorySize: 256
+      Role: !GetAtt ControlRole.Arn
+      Code: {S3Bucket: !Ref ResultsBucket, S3Key: !Ref LambdaCodeKey}
+      Environment:
+        Variables:
+          CLUSTER: !Ref Cluster
+          TASK_FAMILY: co2vent-run
+          SUBNETS: !Join [",", !Ref SubnetIds]
+          SECURITY_GROUP: !GetAtt PanelSecurityGroup.GroupId
+          BUCKET: !Ref ResultsBucket
+          COGNITO_DOMAIN: !Sub "co2vent-${AWS::AccountId}.auth.${AWS::Region}.amazoncognito.com"
+          CLIENT_ID: !Ref UserPoolClient
+
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties: {Name: co2vent-control, ProtocolType: HTTP}
+
+  ApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref HttpApi
+      StageName: $default
+      AutoDeploy: true
+      DefaultRouteSettings: {ThrottlingBurstLimit: 5, ThrottlingRateLimit: 2}
+
+  ApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt ControlFunction.Arn
+      PayloadFormatVersion: "2.0"
+
+  JwtAuthorizer:
+    Type: AWS::ApiGatewayV2::Authorizer
+    Properties:
+      ApiId: !Ref HttpApi
+      Name: cognito
+      AuthorizerType: JWT
+      IdentitySource: [$request.header.Authorization]
+      JwtConfiguration:
+        Audience: [!Ref UserPoolClient]
+        Issuer: !Sub "https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}"
+
+  RoutePage:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref HttpApi, RouteKey: "GET /", Target: !Sub "integrations/${ApiIntegration}"}
+  RouteRun:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref HttpApi, RouteKey: "POST /run", Target: !Sub "integrations/${ApiIntegration}",
+                 AuthorizationType: JWT, AuthorizerId: !Ref JwtAuthorizer}
+  RouteStatus:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref HttpApi, RouteKey: "GET /status", Target: !Sub "integrations/${ApiIntegration}",
+                 AuthorizationType: JWT, AuthorizerId: !Ref JwtAuthorizer}
+  RouteStop:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref HttpApi, RouteKey: "POST /stop", Target: !Sub "integrations/${ApiIntegration}",
+                 AuthorizationType: JWT, AuthorizerId: !Ref JwtAuthorizer}
+
+  ApiInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref ControlFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*"
+
+Outputs:
+  ControlUrl:
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/"
+  UserPoolId:
+    Value: !Ref UserPool
+  ClientId:
+    Value: !Ref UserPoolClient
