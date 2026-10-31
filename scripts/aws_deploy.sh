@@ -61,6 +61,11 @@ aws cloudformation deploy --stack-name "$STACK" --template-file cloud/stack.yaml
   ImageUri="$IMAGE" LambdaCodeKey="$KEY" ResultsBucket="$BUCKET" IotEndpoint="$ENDPOINT" \
   VpcId="$VPC" SubnetIds="$SUBNETS"
 aws cloudformation describe-stacks --stack-name "$STACK" --query 'Stacks[0].Outputs' --output table
+# CORS бакета: сторінка керування читає результати (перегляд .md і журналів) лише зі свого origin
+API_ORIGIN="$(aws cloudformation describe-stacks --stack-name "$STACK" \
+  --query "Stacks[0].Outputs[?OutputKey=='ControlUrl'].OutputValue" --output text | sed 's|/$||')"
+aws s3api put-bucket-cors --bucket "$BUCKET" --cors-configuration \
+  "{\"CORSRules\":[{\"AllowedOrigins\":[\"$API_ORIGIN\"],\"AllowedMethods\":[\"GET\"],\"AllowedHeaders\":[\"*\"],\"MaxAgeSeconds\":600}]}"
 
 # --- 6. бюджет-сповіщення (API бюджетів глобальний; ресурс CFN доступний лише в us-east-1) ---
 if [ -n "${BUDGET_EMAIL:-}" ] && ! aws budgets describe-budget --account-id "$ACCOUNT" --budget-name co2vent-spend-alert >/dev/null 2>&1; then
