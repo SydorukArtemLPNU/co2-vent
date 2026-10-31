@@ -243,8 +243,7 @@ def main():
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=f"esp8266-{config.DEVICE_ID}",
                          clean_session=True)
     client.max_inflight_messages_set(1)
-    if config.BROKER_USER:
-        client.username_pw_set(config.BROKER_USER, config.BROKER_PASSWORD)
+    config.configure_mqtt(client, role="node")
     node = EspNode(lambda text: uart.write(text.encode()),
                    lambda topic, payload: client.publish(topic, payload, qos=1))
 

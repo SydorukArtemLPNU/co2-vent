@@ -55,8 +55,7 @@ def main():
     rows = load(args.scenario)[: args.limit or None]
 
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="co2vent-simulator")
-    if config.BROKER_USER:
-        client.username_pw_set(config.BROKER_USER, config.BROKER_PASSWORD)
+    config.configure_mqtt(client, role="node")
     client.reconnect_delay_set(1, 5)
     client.connect(config.BROKER_HOST, config.BROKER_PORT)
     client.loop_start()             # при розриві QoS 1 повідомлення чекають у черзі клієнта

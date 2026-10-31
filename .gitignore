@@ -12,3 +12,5 @@ __pycache__/
 hw/build/
 hw/sim/uno_sim
 logs/try-*
+# сертифікати й ключі AWS IoT
+certs/

@@ -1,0 +1,4 @@
+2026-10-31 07:55:23,025 INFO agent MQTT connected rc=Success ventilation=off
+2026-10-31 07:55:25,830 INFO agent COMMAND applied command_id=cmd-65f40e5a7d5c action=ventilation_off -> ventilation=off
+2026-10-31 07:55:59,594 INFO agent COMMAND applied command_id=cmd-994551bca847 action=ventilation_on -> ventilation=on
+2026-10-31 07:56:12,598 INFO agent COMMAND applied command_id=cmd-ec2865ff2860 action=ventilation_off -> ventilation=off

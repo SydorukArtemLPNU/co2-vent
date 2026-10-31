@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS events (
   event_id TEXT PRIMARY KEY, device_id TEXT NOT NULL, sensor_id TEXT NOT NULL,
   observed_at TEXT NOT NULL, received_at TEXT NOT NULL,
   metric TEXT NOT NULL, value REAL NOT NULL, unit TEXT NOT NULL, source TEXT NOT NULL,
-  co2_median REAL                       -- медіана трьох давачів після цієї події
+  co2_median REAL,                      -- медіана трьох давачів після цієї події
+  late INTEGER NOT NULL DEFAULT 0       -- 1: прийшла не в порядку (брокер не гарантує порядку), правило не враховує
 );
 CREATE INDEX IF NOT EXISTS events_device_time ON events(device_id, observed_at);
 CREATE INDEX IF NOT EXISTS events_sensor_time ON events(device_id, sensor_id, observed_at);
@@ -57,13 +58,13 @@ def event_exists(db, event_id):
     return db.execute("SELECT 1 FROM events WHERE event_id = ?", (event_id,)).fetchone() is not None
 
 
-def insert_event_once(db, event, observed, received):
+def insert_event_once(db, event, observed, received, late=False):
     """Ідемпотентний запис за event_id; False - така подія вже є."""
     cur = db.execute(
         """INSERT OR IGNORE INTO events (event_id, device_id, sensor_id, observed_at,
-           received_at, metric, value, unit, source) VALUES (?,?,?,?,?,?,?,?,?)""",
+           received_at, metric, value, unit, source, late) VALUES (?,?,?,?,?,?,?,?,?,?)""",
         (event["event_id"], event["device_id"], event["sensor_id"], iso(observed),
-         iso(received), event["metric"], float(event["value"]), event["unit"], event["source"]))
+         iso(received), event["metric"], float(event["value"]), event["unit"], event["source"], int(late)))
     db.commit()
     return cur.rowcount == 1
 

@@ -61,10 +61,15 @@ class Processor:
 
         latest = storage.latest_by_sensor(self.db, self.device_id)
         previous = latest.get(event["sensor_id"])
-        if previous and observed <= previous[0]:
-            return self._reject(topic, payload, "out of order for sensor", event_id)
-        if not storage.insert_event_once(self.db, event, observed, received):
+        # брокер (зокрема AWS IoT Core) не гарантує порядку доставки: свіжа, але запізніла подія
+        # зберігається в історії з позначкою late, а правило й медіана її не враховують
+        late = bool(previous and observed <= previous[0])
+        if not storage.insert_event_once(self.db, event, observed, received, late=late):
             return self._reject(topic, payload, "duplicate event_id", event_id)
+        if late:
+            log.warning("LATE event_id=%s sensor=%s observed_at=%s - stored, not used by rule",
+                        event_id, event["sensor_id"], iso(observed))
+            return {"result": "late", "event_id": event_id}
 
         latest[event["sensor_id"]] = (observed, float(event["value"]))
         median = aggregate(latest, observed)
@@ -204,8 +209,7 @@ def main():
     db = storage.connect(args.db)
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="co2vent-processor",
                          clean_session=False)    # брокер зберігає QoS 1 на час нашої відсутності
-    if config.BROKER_USER:
-        client.username_pw_set(config.BROKER_USER, config.BROKER_PASSWORD)
+    config.configure_mqtt(client)
 
     def publish(topic, payload):
         client.publish(topic, payload, qos=1)

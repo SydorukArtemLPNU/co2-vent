@@ -17,7 +17,7 @@ services:
       - .:/app
     environment:
       PYTHONPATH: /app
-      PZIR_BROKER_HOST: mqtt
+      PZIR_BROKER_HOST: ${PZIR_BROKER_HOST:-mqtt}   # з .env - хмарний брокер, інакше локальний
       PZIR_TIME_SCALE: ${PZIR_TIME_SCALE:-1}
       HW_SCENARIO: ${HW_SCENARIO:-scenarios/class_day.csv}
       HW_CRC_FAULTS: ${HW_CRC_FAULTS:-}

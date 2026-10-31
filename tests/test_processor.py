@@ -155,11 +155,17 @@ class Faults(Base):
         result = self.b.send(self.b.event("scd40-3", 1500, observed_at=old.isoformat()))
         self.assertEqual(result["reason"], "stale event")
 
-    def test_out_of_order_rejected(self):
+    def test_out_of_order_stored_as_late_without_rule(self):
         self.b.tick(900)
+        state = self.b.processor.state
         earlier = self.b.clock() - timedelta(seconds=P * 2)
-        result = self.b.send(self.b.event("scd40-1", 900, observed_at=earlier.isoformat()))
-        self.assertEqual(result["reason"], "out of order for sensor")
+        event = self.b.event("scd40-1", 1500, observed_at=earlier.isoformat())
+        self.assertEqual(self.b.send(event)["result"], "late")
+        row = self.b.db.execute("SELECT late, co2_median FROM events WHERE event_id = ?",
+                                (event["event_id"],)).fetchone()
+        self.assertEqual((row["late"], row["co2_median"]), (1, None))   # в історії, але без медіани
+        self.assertEqual(self.b.processor.state, state)                   # правило не зрушило
+        self.assertEqual(self.b.send(event)["reason"], "duplicate event_id")
 
     def test_ack_unknown_or_repeated(self):
         fake = make_ack("cmd-unknown", config.DEVICE_ID, "applied", "on", self.b.clock())

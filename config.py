@@ -6,6 +6,22 @@
 публікує частіше). Пороги ppm від масштабу не залежать.
 """
 import os
+from pathlib import Path
+
+
+def _load_dotenv(path=Path(__file__).with_name(".env")):
+    """Підхоплює локальний .env (секрети хмарного брокера); змінні середовища мають пріоритет."""
+    if not path.is_file():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            key, value = line.split("=", 1)
+            if value.strip():
+                os.environ.setdefault(key.strip(), value.strip())
+
+
+_load_dotenv()
 
 
 def _env(name, default):
@@ -21,6 +37,12 @@ BROKER_HOST = _env("PZIR_BROKER_HOST", "127.0.0.1")
 BROKER_PORT = int(_env_float("PZIR_BROKER_PORT", 1883))
 BROKER_USER = _env("PZIR_BROKER_USER", None)        # секрети лише через env
 BROKER_PASSWORD = _env("PZIR_BROKER_PASSWORD", None)
+BROKER_TLS = _env("PZIR_BROKER_TLS", "0") in ("1", "true", "yes")   # хмарний брокер: TLS на 8883
+BROKER_CA = _env("PZIR_BROKER_CA", None)        # власний CA-файл; інакше - системні сертифікати
+BROKER_CERT = _env("PZIR_BROKER_CERT", None)    # клієнтський сертифікат X.509 (AWS IoT Core, mTLS)
+BROKER_KEY = _env("PZIR_BROKER_KEY", None)      # закритий ключ до нього
+NODE_CERT = _env("PZIR_NODE_CERT", None)        # сертифікат вузла (ESP, агент, симулятор), якщо окремий
+NODE_KEY = _env("PZIR_NODE_KEY", None)
 DB_PATH = _env("PZIR_DB", "co2vent.db")
 AGENT_DB_PATH = _env("PZIR_AGENT_DB", "agent-state.db")
 API_HOST = _env("PZIR_API_HOST", "127.0.0.1")
@@ -59,3 +81,18 @@ SWEEP_PERIOD_S = 0.1                 # період перевірки тайм-
 
 def topic(kind, device_id=None):
     return f"{TOPIC_PREFIX}/{device_id or DEVICE_ID}/{kind}"
+
+
+def configure_mqtt(client, role="server"):
+    """Логін і TLS для клієнта paho. role="node" - пристрій (модель ESP, агент, симулятор):
+    у AWS IoT він має власний сертифікат і політику лише на теми свого класу."""
+    if BROKER_USER:
+        client.username_pw_set(BROKER_USER, BROKER_PASSWORD)
+    if BROKER_TLS:
+        import ssl
+        here = Path(__file__).parent
+        path = lambda p: str(here / p) if p and not Path(p).is_absolute() else p   # noqa: E731
+        cert, key = (NODE_CERT, NODE_KEY) if role == "node" and NODE_CERT else (BROKER_CERT, BROKER_KEY)
+        client.tls_set(ca_certs=path(BROKER_CA), certfile=path(cert), keyfile=path(key),
+                       cert_reqs=ssl.CERT_REQUIRED, tls_version=ssl.PROTOCOL_TLS_CLIENT)
+    return client

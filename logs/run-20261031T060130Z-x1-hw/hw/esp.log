@@ -1,0 +1,15 @@
+2026-10-31 06:01:35,131 INFO esp ESP8266 model: buffer=512 queue=16 dedup=16 port=/tmp/simavr-uart0
+2026-10-31 06:01:35,573 INFO esp UNO sensor init I,0,9A3F07B23B01
+2026-10-31 06:01:36,078 INFO esp UNO sensor init I,1,9A3F07B23C14
+2026-10-31 06:01:36,583 INFO esp UNO sensor init I,2,9A3F07B23D27
+2026-10-31 06:01:36,605 WARNING esp UNO boot B,uno_node,3 - relay is off after reset
+2026-10-31 06:01:37,133 INFO esp WIFI connected
+2026-10-31 06:01:37,294 INFO esp MQTT up, flushed 0 queued messages
+2026-10-31 06:01:38,153 INFO esp NTP synced
+2026-10-31 06:05:21,610 WARNING esp UNO sensor error E,2,nack
+2026-10-31 06:05:32,577 INFO esp UNO sensor init I,2,fail
+2026-10-31 06:05:43,590 INFO esp UNO sensor init I,2,fail
+2026-10-31 06:05:54,574 INFO esp UNO sensor init I,2,fail
+2026-10-31 06:06:06,103 INFO esp UNO sensor init I,2,9A3F07B23D27
+2026-10-31 06:07:31,759 INFO esp COMMAND ventilation_on -> UART C,cmd-ed2696f0ea10,1
+2026-10-31 06:09:46,778 INFO esp COMMAND ventilation_off -> UART C,cmd-2752be8ea3c9,0

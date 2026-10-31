@@ -100,8 +100,7 @@ def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="co2vent-agent", clean_session=False)
-    if config.BROKER_USER:
-        client.username_pw_set(config.BROKER_USER, config.BROKER_PASSWORD)
+    config.configure_mqtt(client, role="node")
     agent = Agent(sqlite3.connect(args.db, timeout=5, check_same_thread=False),
                   lambda topic, payload: client.publish(topic, payload, qos=1), delay_s=args.delay)
 
