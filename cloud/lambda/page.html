@@ -42,6 +42,10 @@
   button.ghost { background:transparent; color:var(--ink); border-color:var(--line); }
   button.ghost:hover { background:var(--hover); opacity:1; }
   button.stop { background:transparent; color:var(--bad); border-color:var(--line); padding:6px 12px; font-size:13px; }
+  button.clear { background:transparent; color:var(--muted); border:0; padding:0; font-size:13px; font-weight:400; }
+  button.clear:hover { color:var(--bad); opacity:1; }
+  button.clear.armed { color:var(--bad); }
+  h2 .side { display:flex; gap:14px; align-items:baseline; }
 
   .modes { display:grid; gap:8px; margin-bottom:16px; }
   .mode { display:flex; gap:14px; align-items:center; padding:14px 16px; border:1px solid var(--line); border-radius:10px;
@@ -148,7 +152,8 @@
     </section>
 
     <section>
-      <h2>Останні результати <span>посилання діють 1 год</span></h2>
+      <h2>Останні результати <span class="side">посилання діють 1 год
+        <button class="clear" id="clear" onclick="clearRuns()" hidden>Очистити</button></span></h2>
       <ul class="runs" id="results"><li class="empty">завантаження…</li></ul>
     </section>
 
@@ -236,6 +241,22 @@ async function stop() {
   say(r.ok ? `Зупинено: ${r.data.stopped.length}` : `помилка ${r.status}`);
   refresh();
 }
+// два натискання: перше лише просить підтвердження, через 4 с кнопка повертається
+let clearTimer;
+async function clearRuns() {
+  const b = $("clear");
+  if (!b.classList.contains("armed")) {
+    b.classList.add("armed"); b.textContent = "Видалити всі?";
+    clearTimer = setTimeout(() => { b.classList.remove("armed"); b.textContent = "Очистити"; }, 4000);
+    return;
+  }
+  clearTimeout(clearTimer);
+  b.classList.remove("armed"); b.textContent = "Очистити"; b.disabled = true;
+  const r = await api("clear", { method: "POST" });
+  say(r.ok ? `Видалено прогонів: ${r.data.runs} (${r.data.files} файлів)` : (r.data.error || `помилка ${r.status}`));
+  b.disabled = false;
+  refresh();
+}
 const PHASE = { PROVISIONING: "виділення ресурсів", PENDING: "запуск контейнера", ACTIVATING: "запуск контейнера",
                 RUNNING: "працює", DEACTIVATING: "завершення", STOPPING: "завершення", DEPROVISIONING: "завершення" };
 const runLabel = id => esc(id).replace(/^(\d{4})(\d\d)(\d\d)T(\d\d)(\d\d)(\d\d)Z$/, "$1-$2-$3 $4:$5:$6 UTC");
@@ -251,6 +272,7 @@ async function refresh() {
     : `<span class="muted">немає</span>`;
   $("stop").hidden = !t; $("stop").disabled = false;
   $("start").disabled = !!t;
+  if (!$("clear").classList.contains("armed")) $("clear").hidden = !r.data.results.length;
   const order = ["SUMMARY.md", "processor.log", "esp.log", "uno_sim.log"];
   $("results").innerHTML = r.data.results.length ? r.data.results.map(x =>
     `<li><span class="id">${runLabel(x.run)}</span><span class="files">`

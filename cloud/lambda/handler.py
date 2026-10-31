@@ -4,6 +4,7 @@ GET  /        сторінка керування (без секретів; вх
 POST /run     {"scale": 10|1, "faults": bool} - запуск ECS Fargate задачі   } лише з JWT
 GET  /status  поточний прогін, адреса панелі, останні результати в S3       } Cognito
 POST /stop    зупинити поточний прогін                                      }
+POST /clear   видалити результати завершених прогонів з S3 (runs/)          }
 GET  /panel/dashboard (+ /panel/api/…) вебпанель прогону через цей же HTTPS-домен (через proxy.py у VPC):
               лише з IP, з якого прогін запущено; IP контейнера назовні не видно
 Захист кредитів: одночасно лише один прогін; контейнер має власний ліміт часу (MAX_RUN_S).
@@ -97,6 +98,22 @@ def recent_results(limit=5):
     return result
 
 
+def clear_results():
+    """Видаляє runs/<id>/ усіх прогонів, крім поточного (його контейнер ще вивантажуватиме файли)."""
+    keep = {f"runs/{task_env(t).get('RUN_ID')}/" for t in active_tasks()}
+    keys, runs = [], set()
+    for page in s3.get_paginator("list_objects_v2").paginate(Bucket=ENV["BUCKET"], Prefix="runs/"):
+        for o in page.get("Contents", []):
+            prefix = o["Key"].split("/", 2)[:2]
+            if "/".join(prefix) + "/" not in keep:
+                keys.append(o["Key"])
+                runs.add(prefix[1])
+    for i in range(0, len(keys), 1000):                  # delete_objects приймає до 1000 ключів
+        s3.delete_objects(Bucket=ENV["BUCKET"], Delete={"Objects": [{"Key": k} for k in keys[i:i + 1000]],
+                                                        "Quiet": True})
+    return {"runs": len(runs), "files": len(keys)}
+
+
 def handler(event, context):
     route = event.get("routeKey", "")
     if route == "GET /":
@@ -140,5 +157,8 @@ def handler(event, context):
             ecs.stop_task(cluster=ENV["CLUSTER"], task=t["taskArn"], reason="stopped from web")
             stopped.append(t["taskArn"].rsplit("/", 1)[-1])
         return reply(200, {"stopped": stopped})
+
+    if route == "POST /clear":
+        return reply(200, clear_results())
 
     return reply(404, {"error": "route not found"})

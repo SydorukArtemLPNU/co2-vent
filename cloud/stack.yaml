@@ -161,7 +161,7 @@ Resources:
                 Action: s3:ListBucket
                 Resource: !Sub "arn:aws:s3:::${ResultsBucket}"
               - Effect: Allow
-                Action: s3:GetObject
+                Action: [s3:GetObject, s3:DeleteObject]
                 Resource: !Sub "arn:aws:s3:::${ResultsBucket}/runs/*"
 
   ControlFunction:
@@ -258,6 +258,10 @@ Resources:
   RouteStop:
     Type: AWS::ApiGatewayV2::Route
     Properties: {ApiId: !Ref HttpApi, RouteKey: "POST /stop", Target: !Sub "integrations/${ApiIntegration}",
+                 AuthorizationType: JWT, AuthorizerId: !Ref JwtAuthorizer}
+  RouteClear:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: {ApiId: !Ref HttpApi, RouteKey: "POST /clear", Target: !Sub "integrations/${ApiIntegration}",
                  AuthorizationType: JWT, AuthorizerId: !Ref JwtAuthorizer}
 
   RoutePanel:   # без JWT (звичайна навігація браузера); Lambda пускає лише з IP, що запустив прогін
