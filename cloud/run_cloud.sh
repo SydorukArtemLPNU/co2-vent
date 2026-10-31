@@ -45,9 +45,17 @@ if [ -n "${RESET_AT:-}" ]; then
   ( sleep "$RESET_AT"; echo "RESET Uno"; kill -USR1 "$SIM_PID" ) &
 fi
 
-DURATION="$(python3 -c "import csv; r=list(csv.DictReader(open('scenarios/class_day.csv'))); print(round((float(r[-1]['offset_s'])+10)/$SCALE))")"
-echo "scenario ${DURATION}s, panel :8000 stays ${PANEL_GRACE_S:-180}s after"
-sleep "$DURATION"
+# кінець сценарію - за часом симуляції (uno_sim друкує "SIM t=<с>" щохвилини симульованого часу):
+# якщо CPU не встигає за ×k, вузол не зупиниться передчасно; верхня межа - 3x номінальної тривалості
+SIM_END="$(python3 -c "import csv; r=list(csv.DictReader(open('scenarios/class_day.csv'))); print(int(float(r[-1]['offset_s']))+15)")"
+LIMIT=$(( SIM_END * 3 / SCALE + 30 ))
+echo "scenario ${SIM_END}s of simulated time (≈ $(( SIM_END / SCALE ))s at x$SCALE), panel :8000 stays ${PANEL_GRACE_S:-180}s after"
+for (( waited = 0; waited < LIMIT; waited += 2 )); do
+  sim_t="$( { grep -o 'SIM t=[0-9]*' "$RUN/hw/uno_sim.log" 2>/dev/null || true; } | tail -1 | cut -d= -f2)"
+  [ "${sim_t:-0}" -ge "$SIM_END" ] && break
+  sleep 2
+done
+grep -E "SIM t=" "$RUN/hw/uno_sim.log" | tail -1 || true
 echo "scenario done - node stopped, panel stays with results"
 kill "$SIM_PID" "$ESP_PID" "$I2C_PID" 2>/dev/null || true   # вузол «вимкнено»: історія = сценарій
 sleep "${PANEL_GRACE_S:-180}"
