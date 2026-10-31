@@ -14,11 +14,16 @@ import time
 from pathlib import Path
 
 import boto3
+from botocore.config import Config
 
+ENV = os.environ
+REGION = ENV.get("AWS_REGION", "eu-north-1")
 ecs = boto3.client("ecs")
 ec2 = boto3.client("ec2")
-s3 = boto3.client("s3")
-ENV = os.environ
+# посилання підписуються для регіонального хоста бакета: глобальний s3.amazonaws.com
+# перенаправляє на s3.<region>, і тоді підпис (заголовок host) не збігається - SignatureDoesNotMatch
+s3 = boto3.client("s3", region_name=REGION, endpoint_url=f"https://s3.{REGION}.amazonaws.com",
+                  config=Config(signature_version="s3v4", s3={"addressing_style": "virtual"}))
 PAGE = (Path(__file__).with_name("page.html").read_text(encoding="utf-8")
         .replace("__COGNITO_DOMAIN__", ENV.get("COGNITO_DOMAIN", ""))
         .replace("__CLIENT_ID__", ENV.get("CLIENT_ID", "")))
